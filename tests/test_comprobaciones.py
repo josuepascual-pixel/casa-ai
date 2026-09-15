@@ -56,3 +56,16 @@ async def test_una_planta_sin_bateria_no_revienta_la_comprobacion(settings, stor
     energia = next(c for c in await comprobar_subsistemas(app) if c.nombre.startswith("Energia"))
     assert energia.estado == "ok" and "sin dato de bateria" in energia.detalle
     assert "(solo lectura)" in energia.detalle
+
+
+async def test_verificar_cierra_con_la_seguridad_de_la_configuracion(settings, store) -> None:
+    """Los avisos de seguridad solo salian en el registro; el dueno mira el movil."""
+    # El HA_URL de los tests es http:// hacia otro equipo, que ya es un aviso.
+    cerrado = settings.model_copy(update={"ha_url": "http://127.0.0.1:8123"})
+    app = _app(cerrado, store, ha=False, musica=False, unifi=False, energia=False, knx=False)
+    assert "🔒 Seguridad: sin configuraciones expuestas" in await app.comprobar()
+
+    app.settings = cerrado.model_copy(update={"exigir_confirmacion": False})
+    salida = await app.comprobar()
+    assert "🔓 Seguridad: EXIGIR_CONFIRMACION" in salida
+    assert "🔒" not in salida

@@ -171,7 +171,10 @@ class AplicacionFalsa:
         return Aplicacion.es_dueno(self, canal, usuario)  # type: ignore[arg-type]
 
     async def comprobar(self) -> str:
-        return "✅ Home Assistant: 3 entidades\n❌ Musica BluOS: nadie responde"
+        return (
+            "✅ Home Assistant: 3 entidades\n❌ Musica BluOS: nadie responde\n"
+            "🔒 Seguridad: sin configuraciones expuestas"
+        )
 
     async def sondear_planta(self, texto: str = "sondear") -> str:
         self.sondeos = getattr(self, "sondeos", []) + [texto]

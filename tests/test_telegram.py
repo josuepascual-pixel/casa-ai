@@ -421,3 +421,54 @@ async def test_en_un_grupo_la_persona_es_quien_escribe(settings: Settings) -> No
     update.effective_user = Invitado()
     await bot._cmd_estado(update, None)  # type: ignore[arg-type]
     assert "alguien sin registrar (nino)" in update.message.respuestas[0]
+
+
+# --- Avisos a los duenos -----------------------------------------------------
+
+
+class BotFalso:
+    def __init__(self) -> None:
+        self.enviados: list[tuple[int, str]] = []
+
+    async def send_message(self, chat_id: int, text: str) -> None:
+        self.enviados.append((chat_id, text))
+
+
+class ApplicationFalsa:
+    def __init__(self) -> None:
+        self.bot = BotFalso()
+
+
+async def test_al_arrancar_avisa_a_los_duenos_si_la_casa_queda_expuesta(
+    bot: BotTelegram,
+) -> None:
+    """El aviso vivia en el registro del complemento, que el dueno no lee."""
+    bot.application = ApplicationFalsa()  # type: ignore[assignment]
+    bot.app.settings = bot.app.settings.model_copy(update={"exigir_confirmacion": False})
+
+    await bot._avisar_duenos(
+        "🔓 He arrancado, pero la configuracion deja la casa expuesta:\n\n"
+        + "\n\n".join(f"• {a}" for a in bot.app.settings.avisos_de_seguridad())
+    )
+
+    enviados = bot.application.bot.enviados  # type: ignore[attr-defined]
+    assert [chat for chat, _ in enviados] == [555]
+    assert "EXIGIR_CONFIRMACION" in enviados[0][1]
+
+
+async def test_sin_application_el_aviso_no_revienta(bot: BotTelegram) -> None:
+    await bot._avisar_duenos("hola")  # application es None antes de iniciar()
+
+
+async def test_un_intento_de_intruso_llega_a_los_duenos_una_vez_por_hora(
+    bot: BotTelegram,
+) -> None:
+    bot.application = ApplicationFalsa()  # type: ignore[assignment]
+    chat = ChatFalso(999)
+
+    await bot._avisar_intento(chat)
+    await bot._avisar_intento(chat)
+
+    enviados = bot.application.bot.enviados  # type: ignore[attr-defined]
+    assert len(enviados) == 1
+    assert enviados[0][0] == 555 and "999" in enviados[0][1]

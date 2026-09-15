@@ -339,10 +339,21 @@ class Aplicacion:
 
     # --- Botones ---------------------------------------------------------
     async def comprobar(self) -> str:
-        """Lectura real de cada subsistema, en texto para el movil."""
+        """Lectura real de cada subsistema, en texto para el movil.
+
+        Cierra con la seguridad de la configuracion: quien pregunta «¿que
+        ve Jarvis?» desde el movil es quien tiene que saber si algo queda
+        abierto, y ese aviso solo salia en el registro del complemento.
+        """
         from .comprobaciones import comprobar_subsistemas, texto
 
-        return texto(await comprobar_subsistemas(self))
+        return texto(await comprobar_subsistemas(self)) + "\n" + self.texto_seguridad()
+
+    def texto_seguridad(self) -> str:
+        avisos = self.settings.avisos_de_seguridad()
+        if not avisos:
+            return "🔒 Seguridad: sin configuraciones expuestas"
+        return "\n".join(f"🔓 Seguridad: {aviso}" for aviso in avisos)
 
     async def descubrir(self, red: str | None = None) -> str:
         """Barre la red de casa y devuelve el informe con los bloques para pegar.

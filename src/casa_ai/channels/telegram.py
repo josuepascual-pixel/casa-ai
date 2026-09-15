@@ -108,6 +108,13 @@ class BotTelegram:
             await application.updater.start_polling(drop_pending_updates=True)
         autorizados = self.app.settings.chats_telegram
         log.info("Bot de Telegram activo. Chats autorizados: %s", autorizados or "NINGUNO")
+        avisos = self.app.settings.avisos_de_seguridad()
+        if avisos:
+            # Que lo vea el dueno en el movil, no solo quien lea el registro.
+            await self._avisar_duenos(
+                "🔓 He arrancado, pero la configuracion deja la casa expuesta:\n\n"
+                + "\n\n".join(f"• {aviso}" for aviso in avisos)
+            )
 
     async def detener(self) -> None:
         if self.application is None:
@@ -161,10 +168,16 @@ class BotTelegram:
             f"⚠️ Alguien ha intentado hablar conmigo desde un chat no autorizado: "
             f"{chat.id}{f' ({quien})' if quien else ''}. Lo he rechazado."
         )
+        await self._avisar_duenos(texto)
+
+    async def _avisar_duenos(self, texto: str) -> None:
+        if self.application is None:
+            return
         for dueno in self.app.chats_de_duenos():
             try:
-                await self.application.bot.send_message(chat_id=dueno, text=texto)
-            except Exception:  # noqa: BLE001 - avisar no puede tumbar el rechazo
+                for trozo in partir(texto, LIMITE_MENSAJE):
+                    await self.application.bot.send_message(chat_id=dueno, text=trozo)
+            except Exception:  # noqa: BLE001 - avisar no puede tumbar lo que lo llamo
                 log.exception("No se pudo avisar al chat %s", dueno)
 
     @staticmethod
