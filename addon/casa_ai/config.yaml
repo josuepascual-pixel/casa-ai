@@ -29,7 +29,6 @@ map:
 # limita los clientes del API a localhost y a la red del Supervisor.
 ingress: true
 ingress_port: 8099
-ingress_entry: panel
 panel_icon: mdi:robot
 panel_title: Jarvis
 options:

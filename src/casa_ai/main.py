@@ -234,6 +234,10 @@ def crear_app() -> FastAPI:
             return JSONResponse({"detail": "Cliente no permitido."}, status_code=403)
         return await call_next(request)
 
+    # La raiz tambien es el panel: es lo que abre el ingress de Home Assistant
+    # (su entrada por defecto), y las rutas relativas de la pagina resuelven
+    # igual desde `/` que desde `/panel`.
+    @api.get("/", include_in_schema=False)
     @api.get("/panel", include_in_schema=False)
     async def panel() -> FileResponse:
         return FileResponse(_PANEL / "index.html", media_type="text/html")
