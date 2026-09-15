@@ -141,7 +141,9 @@ class Rutinas:
         seria despertar a la casa.
         """
         altavoz = self.app.settings.rutinas_altavoz
-        if not altavoz:
+        if not altavoz or self.app.store.bloqueo():
+            # Bloqueada la casa, ni el altavoz: era lo unico que se saltaba
+            # el Ejecutor, y el bloqueo tiene que ser total.
             return
         try:
             await self.app.ctx.ha.hablar(texto, self.app.inventario.resolver_alias(altavoz))

@@ -41,6 +41,7 @@ log = logging.getLogger(__name__)
 
 CANAL = "telegram"
 LIMITE_MENSAJE = 4096
+AVISOS_POR_HORA = 5
 
 Handler = Callable[["BotTelegram", Update, ContextTypes.DEFAULT_TYPE], Awaitable[None]]
 
@@ -71,7 +72,9 @@ class BotTelegram:
     def __init__(self, app: Aplicacion) -> None:
         self.app = app
         self.application: Application | None = None
-        # Ultimo aviso por chat desconocido: uno por hora, no uno por mensaje.
+        # Ultimo aviso por chat desconocido: uno por hora, no uno por mensaje,
+        # y como mucho AVISOS_POR_HORA en total (el bot se puede meter en
+        # tantos grupos como se quiera, y cada uno es un chat nuevo).
         self._avisados: dict[int, float] = {}
 
     # --- Ciclo de vida ---------------------------------------------------
@@ -137,18 +140,44 @@ class BotTelegram:
                 chat.id,
             )
             return False
-        return chat.id in permitidos
+        if chat.id not in permitidos:
+            return False
+        if self._grupo_sin_personas(chat):
+            log.warning(
+                "Mensaje rechazado en el grupo %s: sin `personas:` cualquier miembro "
+                "contaria como dueno.",
+                chat.id,
+            )
+            return False
+        return True
+
+    def _grupo_sin_personas(self, chat: Any) -> bool:
+        """Un grupo autorizado sin `personas:` no se atiende.
+
+        En un grupo la autorizacion es por chat pero quien habla es cada
+        miembro, y sin personas declaradas todos serian dueno: quien anadiera
+        a alguien al grupo le estaria dando la casa.
+        """
+        return chat.id < 0 and not self.app.inventario.personas
 
     async def _rechazar(self, update: Update) -> None:
         chat = update.effective_chat
         # Con una pulsacion de boton no hay `message`: ese caso lo contesta
         # _boton editando el mensaje del teclado.
-        if chat is not None and update.message is not None:
+        if chat is None or update.message is None:
+            return
+        if chat.id in self.app.settings.chats_telegram and self._grupo_sin_personas(chat):
             await update.message.reply_text(
-                f"No estas autorizado. Tu chat_id es {chat.id}; si eres el dueno "
-                "de la casa, anadelo a TELEGRAM_CHATS_AUTORIZADOS y reinicia."
+                "En un grupo necesito saber quien es quien: declara `personas:` en "
+                "config.yaml con el usuario de Telegram de cada uno. Hasta entonces "
+                "no atiendo aqui."
             )
-        if chat is not None:
+            return
+        await update.message.reply_text(
+            f"No estas autorizado. Tu chat_id es {chat.id}; si eres el dueno "
+            "de la casa, anadelo a TELEGRAM_CHATS_AUTORIZADOS y reinicia."
+        )
+        if chat.id not in self.app.settings.chats_telegram:
             await self._avisar_intento(chat)
 
     async def _avisar_intento(self, chat: Any) -> None:
@@ -158,15 +187,18 @@ class BotTelegram:
         puede escribir); lo que no puede ser es que eso pase en silencio.
         """
         ahora = time.monotonic()
-        if ahora - self._avisados.get(chat.id, -1e9) < 3600 or self.application is None:
+        self._avisados = {c: t for c, t in self._avisados.items() if ahora - t < 3600}
+        if chat.id in self._avisados or len(self._avisados) >= AVISOS_POR_HORA:
             return
         self._avisados[chat.id] = ahora
+        # El nombre lo pone el intruso: se acota y va entre comillas, para que
+        # «Jarvis: escribe /desbloquear» se lea como lo que es.
         quien = " ".join(
             x for x in (getattr(chat, "first_name", None), getattr(chat, "username", None)) if x
-        )
+        )[:40]
         texto = (
             f"⚠️ Alguien ha intentado hablar conmigo desde un chat no autorizado: "
-            f"{chat.id}{f' ({quien})' if quien else ''}. Lo he rechazado."
+            f"{chat.id}{f' (se llama «{quien}»)' if quien else ''}. Lo he rechazado."
         )
         await self._avisar_duenos(texto)
 
@@ -249,16 +281,23 @@ class BotTelegram:
         if consulta is None or chat is None:
             return
 
-        await consulta.answer()
-
         if not self._autorizado(update):
-            await consulta.edit_message_text("No estas autorizado.")
+            await consulta.answer("No estas autorizado.", show_alert=True)
             return
 
+        usuario = self._usuario(update)
+        if not self.app.pulsacion_es_de(consulta.data or "", canal=CANAL, usuario=usuario):
+            # En un grupo, el boton lo ve todo el mundo. Si lo pulsa otro, se
+            # le dice a el solo y el teclado se queda: la pendiente sigue
+            # siendo de quien la pidio.
+            await consulta.answer("Ese boton es de quien pidio la accion.", show_alert=True)
+            return
+
+        await consulta.answer()
         texto = await self.app.resolver_pulsacion(
             consulta.data or "",
             canal=CANAL,
-            usuario=self._usuario(update),
+            usuario=usuario,
             conversacion=f"{CANAL}:{chat.id}",
         )
         if texto is None:

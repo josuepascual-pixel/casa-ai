@@ -31,6 +31,14 @@ _PRIMERAS_NEGATIVAS = frozenset({
     "negativo", "anula", "anulalo",
 })
 _FRASES_NEGATIVAS = frozenset({"mejor no", "no gracias", "no lo hagas", "que no", "ni hablar"})
+# Palabras que, en cualquier posicion, convierten un «si» en otra cosa:
+# «si, no», «vale, espera», «ok pero no», «confirma que no».
+_DUDAS = _PRIMERAS_NEGATIVAS | frozenset(
+    {"pero", "espera", "esperate", "luego", "despues", "aun", "todavia", "mejor", "ni"}
+)
+_PALABRAS_AFIRMATIVAS = _PRIMERAS_AFIRMATIVAS | frozenset(
+    palabra for frase in _FRASES_AFIRMATIVAS for palabra in frase.split()
+)
 
 MAX_PALABRAS = 4
 
@@ -50,8 +58,24 @@ def _es(texto: str, primeras: frozenset[str], frases: frozenset[str]) -> bool:
 
 
 def es_afirmacion(texto: str) -> bool:
-    return _es(texto, _PRIMERAS_AFIRMATIVAS, _FRASES_AFIRMATIVAS) and not es_negacion(texto)
+    """Un si sin matices: cada palabra es afirmativa y no hay pregunta.
+
+    Antes bastaba con que la PRIMERA palabra fuese un si, y «si… no»,
+    «vale, espera» o «¿si?» ejecutaban una accion de riesgo alto.
+    """
+    if "?" in texto or "¿" in texto:
+        return False
+    palabras = _normalizar(texto)
+    if not _es(texto, _PRIMERAS_AFIRMATIVAS, _FRASES_AFIRMATIVAS):
+        return False
+    return all(p in _PALABRAS_AFIRMATIVAS for p in palabras) and not es_negacion(texto)
 
 
 def es_negacion(texto: str) -> bool:
-    return _es(texto, _PRIMERAS_NEGATIVAS, _FRASES_NEGATIVAS)
+    """Un no, o un si con una duda dentro: en ambos casos no se ejecuta."""
+    palabras = _normalizar(texto)
+    if not palabras or len(palabras) > MAX_PALABRAS:
+        return False
+    return _es(texto, _PRIMERAS_NEGATIVAS, _FRASES_NEGATIVAS) or any(
+        p in _DUDAS for p in palabras
+    )

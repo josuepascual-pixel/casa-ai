@@ -13,6 +13,7 @@ token de acceso de larga duracion en cabecera Bearer.
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -89,6 +90,35 @@ def es_acceso(estado: dict[str, Any]) -> bool:
     return str((estado.get("attributes") or {}).get("device_class", "")) in ACCESOS
 
 
+_ENTITY_ID = re.compile(r"^[a-z0-9_]+\.[a-z0-9_]+$")
+_DOMINIO = re.compile(r"^[a-z0-9_]+$")
+
+
+def entity_id_normalizado(entity_id: str) -> str:
+    """El identificador tal y como lo entiende Home Assistant, o error.
+
+    HA pasa a minusculas y acepta listas separadas por comas en el historico,
+    e ignora lo que va tras `?` en la ruta. Comparar el texto literal contra
+    las entidades privadas dejaba pasar `Input_number.peso_ana`,
+    `input_number.peso_ana?x` o `a,input_number.peso_ana`. Aqui se reduce a
+    una forma unica antes de mirar nada.
+    """
+    limpio = str(entity_id).strip().lower()
+    if not _ENTITY_ID.match(limpio):
+        raise AdapterError(
+            f"'{entity_id}' no es un identificador de entidad valido "
+            "(dominio.nombre, solo minusculas, numeros y guion bajo)."
+        )
+    return limpio
+
+
+def _dominio_normalizado(dominio: str) -> str:
+    limpio = str(dominio).strip().lower()
+    if not _DOMINIO.match(limpio):
+        raise AdapterError(f"'{dominio}' no es un dominio valido de Home Assistant.")
+    return limpio
+
+
 def _dominio(entity_id: str) -> str:
     return entity_id.split(".", 1)[0]
 
@@ -119,15 +149,20 @@ class HomeAssistantRestringido:
             return False
         return self._dominios is None or _dominio(entity_id) in self._dominios
 
-    def _vetar(self, entity_id: str) -> None:
-        if entity_id in self._ocultas:
+    def _vetar(self, entity_id: str) -> str:
+        """Comprueba una entidad y devuelve su identificador normalizado."""
+        limpio = entity_id_normalizado(entity_id)
+        if limpio in self._ocultas:
             # Con las mismas palabras que una entidad inexistente: decir «es
             # privada de otro» ya cuenta algo.
             raise AdapterError(f"No hay ninguna entidad '{entity_id}' en Home Assistant.")
-        if not self._permitida(entity_id):
-            assert self._dominios is not None
+        self._vetar_dominio(_dominio(limpio))
+        return limpio
+
+    def _vetar_dominio(self, dominio: str) -> None:
+        if self._dominios is not None and dominio not in self._dominios:
             raise AdapterError(
-                f"'{_dominio(entity_id)}' no es algo que un nino pueda tocar ni consultar "
+                f"'{dominio}' no es algo que un nino pueda tocar ni consultar "
                 f"desde aqui (solo {', '.join(sorted(self._dominios))}). Dile que se lo "
                 "pida a sus padres."
             )
@@ -157,37 +192,35 @@ class HomeAssistantRestringido:
         return self._filtrar(await self._ha.estados())
 
     async def estado(self, entity_id: str) -> dict[str, Any]:
-        self._vetar(entity_id)
-        return await self._ha.estado(entity_id)
+        return await self._ha.estado(self._vetar(entity_id))
 
     async def buscar_entidades(
         self, *, dominio: str | None = None, texto: str | None = None, limite: int = 60
     ) -> list[dict[str, Any]]:
-        if dominio and self._dominios is not None:
-            self._vetar(f"{dominio}.")
+        if dominio:
+            self._vetar_dominio(_dominio_normalizado(dominio))
         encontradas = await self._ha.buscar_entidades(dominio=dominio, texto=texto, limite=limite)
         return self._filtrar(encontradas)
 
     async def historico(
         self, entity_id: str, *, horas: int = 24, max_puntos: int = 120
     ) -> list[dict[str, Any]]:
-        self._vetar(entity_id)
-        return await self._ha.historico(entity_id, horas=horas, max_puntos=max_puntos)
+        limpio = self._vetar(entity_id)
+        return await self._ha.historico(limpio, horas=horas, max_puntos=max_puntos)
 
     async def snapshot_camara(self, entity_id: str) -> bytes:
-        self._vetar(entity_id)
-        return await self._ha.snapshot_camara(entity_id)  # pragma: no cover - camera no entra
+        limpio = self._vetar(entity_id)
+        return await self._ha.snapshot_camara(limpio)  # pragma: no cover - camera no entra
 
     async def hablar(self, texto: str, altavoz: str) -> dict[str, Any]:
-        if self._dominios is not None:
-            self._vetar(altavoz)
-        return await self._ha.hablar(texto, altavoz)
+        return await self._ha.hablar(texto, self._vetar(altavoz))
 
     async def llamar_servicio(
         self, dominio: str, servicio: str, datos: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
-        if self._dominios is not None:
-            self._vetar(f"{dominio}.")
+        dominio = _dominio_normalizado(dominio)
+        self._vetar_dominio(dominio)
+        datos = _con_entidades_normalizadas(datos)
         for eid in _entidades_de(datos):
             self._vetar(eid)
             es_nino = self._dominios is not None
@@ -204,6 +237,23 @@ def _entidades_de(datos: dict[str, Any] | None) -> list[str]:
     if isinstance(valor, str):
         return [valor]
     return [str(v) for v in valor or []]
+
+
+def _con_entidades_normalizadas(datos: dict[str, Any] | None) -> dict[str, Any]:
+    """Los mismos datos, con cada entidad en su forma unica (o error).
+
+    Una cadena con comas es lo que HA entiende como lista: se valida cada
+    trozo, y lo que llega al veto y al servicio es la lista ya limpia.
+    """
+    salida = dict(datos or {})
+    for clave in ("entity_id", "media_player_entity_id"):
+        valor = salida.get(clave)
+        if valor is None:
+            continue
+        trozos = valor.split(",") if isinstance(valor, str) else list(valor)
+        limpios = [entity_id_normalizado(t) for t in trozos]
+        salida[clave] = limpios[0] if len(limpios) == 1 else limpios
+    return salida
 
 
 class HomeAssistant:
@@ -319,6 +369,7 @@ class HomeAssistant:
         No se cachea por entidad: la lista entera ya la tenemos, y pedir una
         por una era lo que hacia que el panel disparase ~33 GET por pasada.
         """
+        entity_id = entity_id_normalizado(entity_id)
         frescos = self._frescos()
         if frescos is not None:
             for e in frescos:
@@ -356,6 +407,7 @@ class HomeAssistant:
         self, entity_id: str, *, horas: int = 24, max_puntos: int = 120
     ) -> list[dict[str, Any]]:
         """Historico de una entidad. Se submuestrea para no saturar el contexto."""
+        entity_id = entity_id_normalizado(entity_id)
         desde = (datetime.now(UTC) - timedelta(hours=horas)).isoformat()
         datos = await self._get(
             f"/api/history/period/{desde}",
@@ -395,6 +447,7 @@ class HomeAssistant:
         de hablar con UniFi Protect directamente, se le pide la imagen a HA,
         que si esta en casa.
         """
+        entity_id = entity_id_normalizado(entity_id)
         cliente = await self._http()
         with contacto("Home Assistant"):
             try:
@@ -427,6 +480,7 @@ class HomeAssistant:
                 "No hay entidad de texto a voz configurada (TTS_ENTIDAD, p. ej. "
                 "`tts.elevenlabs`). Sin ella no se puede hablar por los altavoces."
             )
+        altavoz = entity_id_normalizado(altavoz)
         if not altavoz.startswith("media_player."):
             raise AdapterError(
                 f"'{altavoz}' no es un altavoz de Home Assistant (media_player.*). "
@@ -446,6 +500,8 @@ class HomeAssistant:
     async def llamar_servicio(
         self, dominio: str, servicio: str, datos: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
+        dominio = _dominio_normalizado(dominio)
+        datos = _con_entidades_normalizadas(datos)
         permitidos = SERVICIOS_PERMITIDOS.get(dominio)
         if permitidos is None:
             raise AdapterError(

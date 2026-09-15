@@ -111,6 +111,12 @@ class StoreFalso:
     def auditoria(self, limite: int = 10) -> list[dict[str, Any]]:
         return self.registros
 
+    def detalle_pendiente(self, token: str) -> dict[str, Any] | None:
+        for p in self.pendientes:
+            if p["token"] == token:
+                return {"estado": "pendiente", "canal": "telegram", "usuario": "555", **p}
+        return None
+
     def bloqueo(self) -> dict[str, Any] | None:
         return getattr(self, "_bloqueo", None)
 
@@ -160,6 +166,7 @@ class AplicacionFalsa:
     # `confirmar_pendiente`, y los tres estan aqui.
     pendientes_para_ofrecer = Aplicacion.pendientes_para_ofrecer
     resolver_pulsacion = Aplicacion.resolver_pulsacion
+    pulsacion_es_de = Aplicacion.pulsacion_es_de
 
     def resumen_configuracion(self) -> dict[str, Any]:
         return {"home_assistant": True, "unifi": False, "herramientas_activas": ["a", "b"]}

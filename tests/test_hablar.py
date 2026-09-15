@@ -94,3 +94,8 @@ async def test_el_informe_se_lee_por_el_altavoz_y_la_vigilancia_no(settings: Set
     await rutinas._vigilancia()
 
     assert dichos == ["media_player.cocina"]
+
+    # Con la casa bloqueada, ni el altavoz: era lo unico que se saltaba el Ejecutor.
+    app.store.bloquear("telegram:555")
+    await rutinas._informe()
+    assert dichos == ["media_player.cocina"]

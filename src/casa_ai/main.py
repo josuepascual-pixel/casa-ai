@@ -97,10 +97,13 @@ class Identidad:
     usuario: str
 
 
-# La red interna de Home Assistant: el Supervisor, que es quien reenvia el
-# ingress, vive ahi. Una peticion que llega de esa red con X-Ingress-Path la
-# ha autenticado Home Assistant con el login del usuario (y su segundo factor).
-RED_SUPERVISOR = ipaddress.ip_network("172.30.32.0/23")
+# El Supervisor de Home Assistant, que es quien reenvia el ingress, tiene una
+# direccion fija en la red interna (la segunda de 172.30.32.0/23). Solo esa:
+# el resto de esa red son los demas complementos, y uno cualquiera podria
+# poner las cabeceras del ingress. Una peticion que llega de esa direccion
+# con X-Ingress-Path la ha autenticado Home Assistant con el login del
+# usuario (y su segundo factor).
+RED_SUPERVISOR = ipaddress.ip_network("172.30.32.2/32")
 
 IDENTIDAD_TOKEN = Identidad("http", USUARIO_HTTP)
 
@@ -201,6 +204,20 @@ def crear_app() -> FastAPI:
 
     autenticar = _autenticador(settings)
 
+    async def solo_token(quien: Identidad = Depends(autenticar)) -> Identidad:  # noqa: B008
+        """Las rutas que no son el panel exigen el token, ingress o no.
+
+        El Supervisor reenvia por el ingress CUALQUIER ruta del complemento a
+        cualquier sesion de Home Assistant, incluida la de la tablet del nino.
+        Si /chat o /voz aceptasen esa identidad, el nino hablaria con Jarvis
+        como dueno (o como el aparato que el quisiera nombrar).
+        """
+        if quien.canal != "http":
+            raise HTTPException(
+                403, "Esta ruta no se sirve por el ingress de Home Assistant."
+            )
+        return quien
+
     api = FastAPI(
         title="Casa AI",
         description=(
@@ -270,12 +287,12 @@ def crear_app() -> FastAPI:
             headers={"Cache-Control": "no-store"},
         )
 
-    @api.get("/salud", dependencies=[Depends(autenticar)])
+    @api.get("/salud", dependencies=[Depends(solo_token)])
     async def salud() -> dict[str, Any]:
         return {"estado": "ok", "subsistemas": aplicacion.resumen_configuracion()}
 
     @api.post("/chat", response_model=RespuestaChat,
-              dependencies=[Depends(autenticar)])
+              dependencies=[Depends(solo_token)])
     async def chat(peticion: PeticionChat) -> RespuestaChat:
         """Chat por HTTP, autenticado con API_TOKEN.
 
@@ -293,7 +310,7 @@ def crear_app() -> FastAPI:
         )
         return RespuestaChat(respuesta=respuesta)
 
-    @api.post("/voz", response_model=RespuestaChat, dependencies=[Depends(autenticar)])
+    @api.post("/voz", response_model=RespuestaChat, dependencies=[Depends(solo_token)])
     async def voz(peticion: PeticionVoz) -> RespuestaChat:
         """Una frase dicha a un satelite de voz, via Home Assistant.
 
@@ -315,7 +332,7 @@ def crear_app() -> FastAPI:
         )
         return RespuestaChat(respuesta=respuesta)
 
-    @api.get("/verificar", dependencies=[Depends(autenticar)])
+    @api.get("/verificar", dependencies=[Depends(solo_token)])
     async def verificar() -> dict[str, Any]:
         """Lectura real de cada subsistema, para la puesta en marcha sin terminal."""
         from .comprobaciones import comprobar_subsistemas
@@ -327,18 +344,18 @@ def crear_app() -> FastAPI:
             ]
         }
 
-    @api.post("/descubrir", dependencies=[Depends(autenticar)])
+    @api.post("/descubrir", dependencies=[Depends(solo_token)])
     async def descubrir(peticion: PeticionDescubrir | None = None) -> dict[str, str]:
         """Barre la red de casa. Solo abre conexiones TCP; no escribe en nada."""
         return {"informe": await aplicacion.descubrir(peticion.red if peticion else None)}
 
-    @api.post("/planta/sondear", dependencies=[Depends(autenticar)])
+    @api.post("/planta/sondear", dependencies=[Depends(solo_token)])
     async def sondear_planta(peticion: PeticionSondeo | None = None) -> dict[str, str]:
         """Sondeo de la planta Sungrow por el Logger1000, sin terminal."""
         orden = peticion.orden if peticion else "sondear"
         return {"informe": await aplicacion.sondear_planta(orden)}
 
-    @api.post("/recargar-inventario", dependencies=[Depends(autenticar)])
+    @api.post("/recargar-inventario", dependencies=[Depends(solo_token)])
     async def recargar() -> dict[str, Any]:
         """Relee config/config.yaml y rehace lo que depende de el."""
         inventario = await aplicacion.recargar_inventario()
@@ -351,11 +368,11 @@ def crear_app() -> FastAPI:
             "herramientas_activas": len(aplicacion.registro.disponibles(aplicacion.ctx)),
         }
 
-    @api.get("/auditoria", dependencies=[Depends(autenticar)])
+    @api.get("/auditoria", dependencies=[Depends(solo_token)])
     async def auditoria(limite: int = 20) -> dict[str, Any]:
         return {"acciones": aplicacion.store.auditoria(limite)}
 
-    @api.get("/avisos-seguridad", dependencies=[Depends(autenticar)])
+    @api.get("/avisos-seguridad", dependencies=[Depends(solo_token)])
     async def avisos() -> dict[str, Any]:
         """Configuraciones que funcionan pero dejan la instalacion expuesta."""
         return {"avisos": settings.avisos_de_seguridad()}
@@ -408,6 +425,10 @@ def run() -> None:
         host=settings.api_host,
         port=settings.api_puerto,
         log_level=settings.log_level.lower(),
+        # Sin esto uvicorn cree a X-Forwarded-For cuando viene de localhost, y
+        # cualquier proceso del equipo (Home Assistant, otro complemento)
+        # se haria pasar por el Supervisor y entraria por el ingress sin token.
+        proxy_headers=False,
     )
 
 

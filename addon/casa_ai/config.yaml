@@ -26,7 +26,7 @@ map:
   - addon_config:rw
 # El panel se abre desde dentro de Home Assistant, tras su login (y su
 # segundo factor si esta activado). El puerto no se publica a la red: run.sh
-# limita los clientes del API a localhost y a la red del Supervisor.
+# limita los clientes del API a localhost y a la direccion del Supervisor.
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:robot

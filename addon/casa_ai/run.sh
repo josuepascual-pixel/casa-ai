@@ -34,7 +34,7 @@ export API_HOST="0.0.0.0"
 # Escucha en todo para que el Supervisor (ingress) y Home Assistant lleguen,
 # pero solo se les atiende a ellos: localhost y la red interna de HA. Ningun
 # equipo de la casa ve el API, con o sin token.
-export API_CLIENTES="127.0.0.0/8,::1/128,172.30.32.0/23"
+export API_CLIENTES="127.0.0.0/8,::1/128,172.30.32.2/32"
 # El panel se abre desde la barra lateral de HA: el Supervisor reenvia la
 # peticion con el usuario que ha hecho login, y con eso basta.
 export API_CONFIAR_EN_INGRESS="true"

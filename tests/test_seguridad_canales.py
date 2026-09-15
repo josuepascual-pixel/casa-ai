@@ -340,7 +340,7 @@ def test_la_lista_de_clientes_del_api(settings: Settings) -> None:
     abierto = settings.model_copy(update={"api_clientes": ""})
     assert abierto.cliente_api_permitido("192.168.0.77")
 
-    cerrado = settings.model_copy(update={"api_clientes": "127.0.0.0/8,172.30.32.0/23"})
+    cerrado = settings.model_copy(update={"api_clientes": "127.0.0.0/8,172.30.32.2/32"})
     assert cerrado.cliente_api_permitido("127.0.0.1")
     assert cerrado.cliente_api_permitido("172.30.32.2")   # el Supervisor (ingress)
     assert not cerrado.cliente_api_permitido("192.168.0.77")
@@ -359,7 +359,7 @@ def test_fuera_de_la_lista_no_hay_api_ni_con_token(monkeypatch, tmp_path: Path) 
 
 def test_el_complemento_limita_el_api_a_home_assistant() -> None:
     run = (Path(__file__).resolve().parents[1] / "addon" / "casa_ai" / "run.sh").read_text("utf-8")
-    assert 'export API_CLIENTES="127.0.0.0/8,::1/128,172.30.32.0/23"' in run
+    assert 'export API_CLIENTES="127.0.0.0/8,::1/128,172.30.32.2/32"' in run
     cfg = (Path(__file__).resolve().parents[1] / "addon" / "casa_ai" / "config.yaml").read_text()
     assert "ingress: true" in cfg and "ingress_port: 8099" in cfg
 

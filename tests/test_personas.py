@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 import respx
 
@@ -189,3 +191,56 @@ async def test_la_vista_oculta_lo_privado_como_si_no_existiera(settings, store) 
 
     informe = app.contexto_para("rutina", "programada", "rutina:informe")
     assert not [e for e in await informe.ha.estados() if "peso" in e["entity_id"]]
+
+
+@respx.mock
+async def test_el_veto_normaliza_el_entity_id_como_hace_home_assistant(settings) -> None:
+    """HA pasa a minusculas, acepta listas con comas y descarta lo que sigue a
+    `?`: comparar el texto literal dejaba leer y ESCRIBIR la entidad privada
+    de otro con `Input_number.peso_ana` o `a,input_number.peso_ana`."""
+    from casa_ai.adapters.homeassistant import HomeAssistant
+
+    estados_ha(entidad("input_number.peso_ana", "70"), entidad("light.leo"))
+    escrituras = servicio_ha("input_number", "set_value")
+    vista = HomeAssistant(settings).restringido_a(ocultas=frozenset({"input_number.peso_ana"}))
+
+    for disfraz in ("Input_number.peso_ana", " input_number.peso_ana ", "INPUT_NUMBER.PESO_ANA"):
+        with pytest.raises(AdapterError, match="No hay ninguna entidad"):
+            await vista.estado(disfraz)
+        with pytest.raises(AdapterError, match="No hay ninguna entidad"):
+            await vista.llamar_servicio(
+                "input_number", "set_value", {"entity_id": disfraz, "value": 1}
+            )
+    for roto in ("input_number.peso_ana?x", "light.leo,input_number.peso_ana",
+                 "input_number.peso_ana/../x", "light.leo x"):
+        with pytest.raises(AdapterError, match="no es un identificador|No hay ninguna"):
+            await vista.historico(roto)
+    with pytest.raises(AdapterError, match="No hay ninguna entidad"):
+        await vista.llamar_servicio(
+            "input_number", "set_value",
+            {"entity_id": "light.leo,input_number.peso_ana", "value": 1},
+        )
+    assert not escrituras.called
+
+    # Y lo que no es privado se sigue normalizando, no rechazando.
+    estado_ha("light.leo", "on")
+    assert (await vista.estado("Light.Leo"))["entity_id"] == "light.leo"
+    ruta = servicio_ha("light", "turn_on")
+    await vista.llamar_servicio("Light", "turn_on", {"entity_id": "LIGHT.leo"})
+    assert ruta.calls[0].request.url.path == "/api/services/light/turn_on"
+    assert json.loads(ruta.calls[0].request.read()) == {"entity_id": "light.leo"}
+
+
+@respx.mock
+async def test_el_adaptador_de_verdad_tambien_normaliza(settings) -> None:
+    """Sin vista (dueno, rutina): el mismo control en la puerta del adaptador."""
+    from casa_ai.adapters.homeassistant import HomeAssistant
+
+    ha = HomeAssistant(settings)
+    for roto in ("light.a?x", "a,b", "sin_punto", "", "light.a b"):
+        with pytest.raises(AdapterError, match="no es un identificador"):
+            await ha.estado(roto)
+        with pytest.raises(AdapterError, match="no es un identificador"):
+            await ha.llamar_servicio("light", "turn_on", {"entity_id": roto})
+    with pytest.raises(AdapterError, match="no es un dominio"):
+        await ha.llamar_servicio("light/../x", "turn_on", {})

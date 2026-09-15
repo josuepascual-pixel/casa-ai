@@ -422,6 +422,20 @@ class Aplicacion:
             conversacion, turno=self.store.turno_actual(conversacion)
         )
 
+    def pulsacion_es_de(self, dato: str, *, canal: str, usuario: str) -> bool:
+        """Si el boton lo pulsa alguien distinto de quien pidio la accion.
+
+        True cuando es suyo, o cuando el dato no es de ninguna pendiente viva
+        (entonces `resolver_pulsacion` ya dira «ya no estaba pendiente»).
+        """
+        pulsacion = decodificar(dato)
+        if pulsacion is None:
+            return True
+        detalle = self.store.detalle_pendiente(pulsacion[1])
+        if detalle is None or detalle["estado"] != "pendiente":
+            return True
+        return detalle["canal"] == canal and detalle["usuario"] == usuario
+
     async def resolver_pulsacion(
         self, dato: str, *, canal: str, usuario: str, conversacion: str
     ) -> str | None:

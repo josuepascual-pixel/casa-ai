@@ -216,6 +216,8 @@ Honestamente:
   anterior y decide con `afirmaciones.py`. Un sí claro ejecuta, un no claro
   cancela, cualquier otra cosa cancela y sigue. Antes la garantía era «pasó
   un turno humano», y una inyección en el turno siguiente podía confirmar.
+  Un sí es un sí sin matices: cada palabra afirmativa y sin pregunta.
+  «Sí… no», «vale, espera», «ok pero no» o «¿sí?» no ejecutan.
 - **Abrir la casa es riesgo alto también cuando es un `cover`.** Una puerta
   de garaje, un portón o una puerta motorizada son `cover` con
   `device_class` garage, gate o door: `casa_accion` los rechaza y solo
@@ -223,12 +225,29 @@ Honestamente:
   abre. Las acciones de `casa_accion` son una lista cerrada.
 - **En un grupo de Telegram la persona es quien escribe**, no el grupo: el
   nivel y los botones de confirmación van con el usuario, y el informe de la
-  mañana no se manda a chats de niños.
+  mañana no se manda a chats de niños. Un grupo autorizado sin `personas:`
+  no se atiende (cualquier miembro contaría como dueño), y el botón de una
+  acción pendiente solo responde a quien la pidió: si lo pulsa otro, se le
+  dice a él solo y el teclado se queda.
+- **Las entidades se comparan como las entiende Home Assistant.** HA pasa a
+  minúsculas, acepta listas con comas y descarta lo que sigue a `?`; el veto
+  de entidades privadas y de dominios comparaba el texto literal, y
+  `Input_number.peso_ana` o `a,input_number.peso_ana` leían y escribían la
+  entidad privada de otro. Ahora todo identificador se normaliza y valida
+  (`dominio.nombre`, minúsculas, sin comas ni barras) en la puerta del
+  adaptador, antes de mirar nada.
 - **El API no existe para la red de casa.** `API_CLIENTES` limita desde qué
-  direcciones se atiende; el complemento lo fija a localhost y a la red del
-  Supervisor, así que el panel solo se abre desde dentro de Home Assistant
-  (ingress, tras su login) y ningún equipo de la casa llega al puerto aunque
-  tenga el token. Por el ingress no hace falta token: la petición llega del
+  direcciones se atiende; el complemento lo fija a localhost y a la
+  dirección del Supervisor (172.30.32.2, no toda su red: el resto son los
+  demás complementos), así que el panel solo se abre desde dentro de Home
+  Assistant (ingress, tras su login) y ningún equipo de la casa llega al
+  puerto aunque tenga el token. uvicorn arranca sin `proxy_headers`: una
+  cabecera `X-Forwarded-For` desde el propio equipo no cambia el origen.
+  Por el ingress solo se sirve el panel: `/chat`, `/voz` y las rutas
+  administrativas exigen el token aunque lleguen del Supervisor, porque el
+  ingress reenvía cualquier ruta a cualquier sesión de Home Assistant,
+  también a la de la tablet del niño. Por el ingress no hace falta token:
+  la petición llega del
   Supervisor (su IP, no una cabecera que cualquiera pueda poner) con el
   usuario de HA que hizo login, y ese usuario es la persona: en la tablet
   del niño el panel no lista cámaras y la captura da 403. Con el API abierto

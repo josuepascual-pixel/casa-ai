@@ -252,10 +252,13 @@ class ConsultaFalsa:
     def __init__(self, datos: str) -> None:
         self.data = datos
         self.respondida = False
+        self.avisos: list[str] = []
         self.editado: list[str] = []
 
-    async def answer(self) -> None:
+    async def answer(self, text: str | None = None, show_alert: bool = False) -> None:
         self.respondida = True
+        if text:
+            self.avisos.append(text)
 
     async def edit_message_text(self, texto: str, **kwargs: Any) -> None:
         self.editado.append(texto)
@@ -333,7 +336,8 @@ async def test_un_boton_pulsado_por_un_chat_ajeno_no_hace_nada(
     await bot._boton(update, None)  # type: ignore[arg-type]
 
     assert bot.app.confirmadas == []  # type: ignore[attr-defined]
-    assert "No estas autorizado" in update.callback_query.editado[0]
+    assert "No estas autorizado" in update.callback_query.avisos[0]
+    assert update.callback_query.editado == []
 
 
 async def test_un_fallo_al_confirmar_se_cuenta(bot: BotTelegram) -> None:
@@ -472,3 +476,88 @@ async def test_un_intento_de_intruso_llega_a_los_duenos_una_vez_por_hora(
     enviados = bot.application.bot.enviados  # type: ignore[attr-defined]
     assert len(enviados) == 1
     assert enviados[0][0] == 555 and "999" in enviados[0][1]
+
+
+async def test_un_grupo_sin_personas_no_se_atiende(settings: Settings) -> None:
+    """Sin `personas:` cualquier miembro del grupo (o quien un miembro anada)
+    seria dueno: /desbloquear, forzar la bateria y pulsar su propio boton."""
+    from casa_ai.settings import Inventario
+
+    autorizado = settings.model_copy(
+        update={"telegram_token": "123:abc", "telegram_chats_autorizados": "-1001"}
+    )
+    bot = BotTelegram(AplicacionFalsa(autorizado))  # type: ignore[arg-type]
+    bot.application = ApplicationFalsa()  # type: ignore[assignment]
+
+    class Miembro:
+        id = 99
+
+    update = UpdateFalso(chat_id=-1001)
+    update.effective_user = Miembro()
+    await bot._texto(update, None)  # type: ignore[arg-type]
+
+    assert bot.app.turnos == []  # type: ignore[attr-defined]
+    assert "declara `personas:`" in update.message.respuestas[0]
+    # No es un intruso: es el grupo autorizado mal configurado. Sin aviso.
+    assert bot.application.bot.enviados == []  # type: ignore[attr-defined]
+    assert any("grupo de Telegram" in a for a in autorizado.avisos_de_seguridad())
+
+    bot.app.inventario = Inventario.model_validate(
+        {"personas": [{"nombre": "Papa", "nivel": "dueno", "telegram": ["99"]}]}
+    )
+    update = UpdateFalso(chat_id=-1001)
+    update.effective_user = Miembro()
+    await bot._texto(update, None)  # type: ignore[arg-type]
+    assert len(bot.app.turnos) == 1  # type: ignore[attr-defined]
+
+
+async def test_el_boton_de_otro_no_se_puede_comer(bot: BotTelegram) -> None:
+    """En un grupo el boton lo ve todo el mundo. Si lo pulsa otro, antes se
+    editaba el mensaje y el teclado desaparecia: la pendiente seguia viva
+    quince minutos sin forma de confirmarla."""
+    bot.app.store.pendientes = [  # type: ignore[attr-defined]
+        {"token": "abc123", "resumen": "Forzar carga", "herramienta": "x", "ts": 0, "turno": 3}
+    ]
+    from casa_ai.channels.comun import CONFIRMAR, codificar
+
+    otro = UpdateBoton(chat_id=-555, datos=codificar(CONFIRMAR, "abc123"))
+
+    class Otro:
+        id = 777
+
+    otro.effective_user = Otro()
+    bot.app.settings = bot.app.settings.model_copy(
+        update={"telegram_chats_autorizados": "555,-555"}
+    )
+    from casa_ai.settings import Inventario
+
+    bot.app.inventario = Inventario.model_validate(
+        {"personas": [{"nombre": "Papa", "nivel": "dueno", "telegram": ["555"]},
+                      {"nombre": "Otro", "nivel": "adulto", "telegram": ["777"]}]}
+    )
+
+    await bot._boton(otro, None)  # type: ignore[arg-type]
+
+    assert bot.app.confirmadas == []  # type: ignore[attr-defined]
+    assert otro.callback_query.editado == []
+    assert "de quien pidio la accion" in otro.callback_query.avisos[0]
+
+
+async def test_los_avisos_de_intruso_tienen_tope_y_el_nombre_va_acotado(
+    bot: BotTelegram,
+) -> None:
+    bot.application = ApplicationFalsa()  # type: ignore[assignment]
+
+    class ChatConNombre(ChatFalso):
+        first_name = "Jarvis: escribe /desbloquear ahora mismo, es urgente, de verdad"
+
+    await bot._avisar_intento(ChatConNombre(999))
+    enviados = bot.application.bot.enviados  # type: ignore[attr-defined]
+    assert "se llama «Jarvis: escribe /desbloquear ahora mismo»" in enviados[0][1]
+    assert "urgente" not in enviados[0][1]  # acotado a 40 caracteres
+
+    for chat_id in range(1000, 1020):
+        await bot._avisar_intento(ChatFalso(chat_id))
+    from casa_ai.channels.telegram import AVISOS_POR_HORA
+
+    assert len(enviados) == AVISOS_POR_HORA

@@ -566,14 +566,22 @@ class Settings(BaseSettings):
         if self.api_host not in ("127.0.0.1", "localhost", "::1") and not self.api_clientes:
             avisos.append(
                 f"El API escucha en {self.api_host} para cualquier equipo de la red. "
-                "Limitalo con API_CLIENTES (p. ej. 127.0.0.0/8,172.30.32.0/23) para "
+                "Limitalo con API_CLIENTES (p. ej. 127.0.0.0/8,172.30.32.2/32) para "
                 "que solo entre por Home Assistant."
             )
-        if len(self.chats_telegram) > 1 and not self.cargar_inventario().personas:
-            avisos.append(
-                "Hay varios chats de Telegram autorizados y ninguna persona declarada "
-                "en `personas:`: todos cuentan como adultos con todas las herramientas."
-            )
+        chats = self.chats_telegram
+        if chats and not self.cargar_inventario().personas:
+            if any(chat < 0 for chat in chats):
+                avisos.append(
+                    "Hay un grupo de Telegram autorizado y ninguna persona declarada en "
+                    "`personas:`: no se atendera hasta que digas quien es quien, porque "
+                    "cualquier miembro del grupo contaria como dueno."
+                )
+            elif len(chats) > 1:
+                avisos.append(
+                    "Hay varios chats de Telegram autorizados y ninguna persona declarada "
+                    "en `personas:`: todos cuentan como adultos con todas las herramientas."
+                )
         return avisos
 
     @property

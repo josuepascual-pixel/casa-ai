@@ -235,3 +235,58 @@ def test_el_panel_entra_solo_si_el_backend_no_pide_token() -> None:
     assert "if (token()) cabeceras.Authorization" in js
     assert 'pedir("salud")' in js and 'pedir("/salud")' not in js
     assert "\nentrar();" in js
+
+
+def test_por_el_ingress_solo_se_sirve_el_panel(monkeypatch, tmp_path: Path) -> None:
+    """El Supervisor reenvia por el ingress CUALQUIER ruta a cualquier sesion
+    de Home Assistant. Desde la tablet del nino, /chat entraria como dueno y
+    /voz como el aparato que el quisiera nombrar."""
+    cabeceras = {**INGRESS, "X-Remote-User-Id": "peque"}
+    with app_de_prueba(
+        monkeypatch, tmp_path, cliente_ip="172.30.32.2",
+        API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="true", CONFIG_PATH=_config_con_personas(tmp_path),
+    ) as c:
+        assert c.get("/api/panel", headers=cabeceras).status_code == 200
+        r = c.post("/chat", json={"mensaje": "fuerza la bateria"}, headers=cabeceras)
+        assert r.status_code == 403
+        r = c.post("/voz", json={"dispositivo": "usuario-papa", "texto": "abre"},
+                   headers=cabeceras)
+        assert r.status_code == 403
+        for ruta in ("/auditoria", "/verificar", "/salud", "/avisos-seguridad"):
+            assert c.get(ruta, headers=cabeceras).status_code == 403, ruta
+        for ruta in ("/recargar-inventario", "/descubrir", "/planta/sondear"):
+            assert c.post(ruta, headers=cabeceras).status_code == 403, ruta
+        # Con el token, como siempre.
+        con_token = {"Authorization": f"Bearer {TOKEN}"}
+        assert c.get("/auditoria", headers=con_token).status_code == 200
+
+
+def test_otro_complemento_no_puede_forjar_el_ingress(monkeypatch, tmp_path: Path) -> None:
+    """La red interna 172.30.32.0/23 la comparten todos los complementos; solo
+    el Supervisor (172.30.32.2) reenvia el ingress."""
+    with app_de_prueba(
+        monkeypatch, tmp_path, cliente_ip="172.30.33.7",
+        API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="true",
+    ) as c:
+        r = c.get("/api/panel", headers={**INGRESS, "X-Remote-User-Id": "papa"})
+        assert r.status_code == 401
+
+
+def test_uvicorn_no_se_cree_x_forwarded_for(monkeypatch) -> None:
+    """Con proxy_headers (el defecto) uvicorn reescribe la IP de origen con lo
+    que diga X-Forwarded-For si la conexion viene de localhost: cualquier
+    proceso del equipo se haria pasar por el Supervisor."""
+    import uvicorn
+
+    from casa_ai import main
+    from casa_ai.settings import get_settings
+
+    llamadas: list[dict] = []
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **kw: llamadas.append(kw))
+    monkeypatch.setenv("API_TOKEN", TOKEN)
+    get_settings.cache_clear()
+    try:
+        main.run()
+    finally:
+        get_settings.cache_clear()
+    assert llamadas[0]["proxy_headers"] is False
