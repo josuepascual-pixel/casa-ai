@@ -15,7 +15,9 @@ salen con dos botones, y el botón solo lo puede pulsar quien tiene ese chat.
 Siri no puede pasarle una frase a otro asistente por sí sola, pero un Atajo
 sí. Se crea una vez en el iPhone (Atajos → + → nombre «Jarvis»):
 
-1. **Dictar texto** (idioma español).
+1. **Pedir entrada** (texto, pregunta «¿Qué le digo a Jarvis?»). Con Siri
+   se responde hablando, y esta acción funciona también en el HomePod;
+   «Dictar texto» solo en el iPhone.
 2. **Obtener contenido de URL**:
    `http://<ip-de-home-assistant>:8123/api/conversation/process`, método
    POST, cabecera `Authorization: Bearer <token de Home Assistant de esa
@@ -33,10 +35,20 @@ frase entra por Home Assistant, que es quien la autentica.
 Fuera de casa hace falta llegar al backend: VPN de UniFi, o el acceso remoto
 de Home Assistant (Nabu Casa) con el complemento expuesto por ingress.
 
-## 3. Leo, desde su cuarto: un satélite de voz sin teléfono
+**El mismo atajo en los HomePod.** Con las *peticiones personales* activadas
+en la app Casa (HomePod → ajustes → Reconocer mi voz y Peticiones personales),
+«Oye Siri, Jarvis» en la cocina lanza el atajo de quien habla, en su iPhone,
+con su token: la identidad sigue siendo la persona, y el HomePod solo lo hace
+para las voces que tiene registradas. Son dos pasos («Oye Siri, Jarvis» y
+la frase); un satélite de Assist lo hace en uno, y es la única diferencia.
 
-Un niño de ocho años no tiene Telegram ni token. Tiene un aparato en su
-habitación que escucha una palabra de activación, y ese aparato es su
+## 3. Leo, desde su cuarto: un satélite de voz sin teléfono (opcional)
+
+Con HomePods en casa este paso no hace falta para los adultos; es para que
+un niño sin teléfono, sin Telegram y sin token pueda hablarle desde su
+cuarto. Mientras no haya satélite, Leo tiene el panel en su tablet (con lo
+que un niño puede ver). Si se quiere, el aparato en su habitación escucha
+una palabra de activación (de serie trae «Hey Jarvis»), y ese aparato es su
 identidad:
 
 - **Aparato**: un *Home Assistant Voice Preview Edition* (unos 60 €), o un
@@ -99,6 +111,6 @@ Con eso, dos cosas hablan solas:
   las 8 se lee en voz alta además de llegar por Telegram. Solo el informe;
   los avisos de vigilancia no despiertan a nadie.
 
-Un HomePod no puede escuchar para Jarvis (solo escucha para Siri); sí puede
-hablar por él. Por eso escuchar es cosa del iPhone o del satélite, y hablar,
-de los HomePods.
+Un HomePod escucha para Siri, y por Siri (el atajo del punto 2, con
+peticiones personales) llega a Jarvis; y habla por él con `tts.speak`.
+Con los HomePod y los iPhone queda cubierta toda la casa sin comprar nada.

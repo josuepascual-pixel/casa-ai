@@ -122,12 +122,17 @@ Todo en `VOZ.md`. En orden:
 2. **Integración ElevenLabs** en Home Assistant con esa voz. Su entidad
    (`tts.elevenlabs`) va en el formulario del complemento, y el HomePod de la
    cocina en «altavoz del informe».
-3. **Atajo de Siri** en tu iPhone y en el de Ana, con el token del API.
-4. **Satélite de Leo**: un Home Assistant Voice PE en su cuarto → pipeline
-   de Assist con Whisper local, agente «Casa AI» (la integración de la
-   carpeta `custom_components/`), voz ElevenLabs. Su `device_id` a `personas:`.
+3. **Atajo de Siri** en tu iPhone y en el de Ana, cada uno con su token
+   personal de Home Assistant. Después, en la app Casa, activar en cada
+   HomePod «Reconocer mi voz» y «Peticiones personales»: el mismo atajo
+   responde en la cocina.
+4. **Satélite de Leo (opcional)**: solo si se quiere que hable con Jarvis
+   desde su cuarto. Un Home Assistant Voice PE → pipeline de Assist con
+   Whisper local, agente «Casa AI» (la integración de la carpeta
+   `custom_components/`), voz ElevenLabs. Su `device_id` a `personas:`.
 
-**Pruebas**: «Oye Siri, Jarvis» → «¿cuánto sol hay?». Y Leo: «Jarvis, luz».
+**Pruebas**: «Oye Siri, Jarvis» → «¿cuánto sol hay?», en el iPhone y en el
+HomePod de la cocina.
 
 ---
 

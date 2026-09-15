@@ -37,7 +37,7 @@ audio de Apple (HomePods, Apple TV, AirPlay).
 | **LG ThinQ** | Electrodomésticos LG | Integración **oficial** `lg_thinq` | 🔧 Instalar en HA |
 | **Anthem Remote** | Procesador de AV Anthem | Integración **oficial** `anthemav` (TCP/IP) | 🔧 Instalar en HA |
 | **Casa** (Apple Home) | HomeKit, HomePods, Apple TV | `homekit_controller` para importar; `homekit` para exportar; `apple_tv` para hablar por los HomePods | 🔧 Ver nota y `VOZ.md` |
-| **Voz** | Atajo de Siri (adultos) y satélite de Assist (Leo) | `/chat` y `/voz` + integración `casa_ai` de HA | ✅ Integrado, ver `VOZ.md` |
+| **Voz** | Atajo de Siri en iPhone y HomePod (adultos); satélite de Assist para Leo, opcional | `/chat` y `/voz` + integración `casa_ai` de HA | ✅ Integrado, ver `VOZ.md` |
 | **EcoWater** | Descalcificadora (HydroLink Plus) | Integración de la comunidad `ecowater` (solo lectura: sal, consumo, regeneración) | 🔧 Instalar en HA |
 | **Provision Cam2** | Cámaras Provision-ISR | `onvif` o cámara genérica por RTSP | 🔧 Instalar en HA |
 | **MySOLEM** | Riego Solem | Comunidad (HACS). **Depende del modelo** | ⚠️ Ver nota |

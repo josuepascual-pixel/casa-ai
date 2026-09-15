@@ -18,7 +18,7 @@ No es un chatbot que explica cómo hacer las cosas. Ejecuta.
 | Red | **UniFi Network** | API del controlador |
 | Cámaras | **UniFi Protect** | API de Protect o proxy de Home Assistant, con visión real sobre las capturas |
 | Todo lo demás | Wallbox, TaHoma, Nuki, HEOS, LG ThinQ, Anthem, spa, riego… | Home Assistant, con catálogo semántico propio — ver [`docs/INTEGRACIONES.md`](docs/INTEGRACIONES.md) |
-| Voz | HomePods y Apple TV para hablar; iPhone o satélite de Assist para escuchar | `/chat` desde un atajo de Siri, `/voz` desde la integración de Home Assistant, y `tts.speak` para la voz de salida — ver [`docs/VOZ.md`](docs/VOZ.md) |
+| Voz | HomePods y Apple TV para hablar; iPhone y HomePod (Siri) para escuchar, satélite de Assist opcional | `/chat` desde un atajo de Siri, `/voz` desde la integración de Home Assistant, y `tts.speak` para la voz de salida — ver [`docs/VOZ.md`](docs/VOZ.md) |
 
 Todo es local: el agente habla con el hardware por la LAN. Lo único que sale a
 internet son los turnos de conversación con Claude. Energía y cámaras tienen
