@@ -56,6 +56,40 @@ bluos: []
 
 # Altavoces por los que Jarvis habla (voz_hablar y el informe de las 8).
 # Los entity_id salen tras la integracion Apple TV de Home Assistant.
+# Tarjetas del panel, una por sistema. Luces, persianas y toldos, accesos
+# (garaje, porton, cerradura Nuki), clima y quien esta en casa salen solos.
+# Cada tarjeta se descomenta cuando su integracion este instalada en Home
+# Assistant y se sustituyen los entity_id por los reales.
+panel: []
+  # - titulo: Coche (Wallbox)
+  #   entidades:
+  #     Cargando: sensor.wallbox_charging_power
+  #     Estado: sensor.wallbox_status_description
+  #     Energia de hoy: sensor.wallbox_added_energy
+  # - titulo: Agua (EcoWater)
+  #   entidades:
+  #     Sal: sensor.ecowater_salt_level_percent
+  #     Dias de sal: sensor.ecowater_out_of_salt_days
+  #     Consumo hoy: sensor.ecowater_water_usage_today
+  # - titulo: Spa
+  #   entidades:
+  #     Temperatura: climate.spa
+  #     Bomba: switch.spa_pump
+  # - titulo: Riego (Solem)
+  #   entidades:
+  #     Programa: switch.solem_programa
+  # - titulo: Cine
+  #   entidades:
+  #     Apple TV: media_player.apple_tv_cine
+  #     Anthem: media_player.anthem
+  # - titulo: Lavadero (LG)
+  #   entidades:
+  #     Lavadora: sensor.lavadora_estado
+  #     Secadora: sensor.secadora_estado
+  # - titulo: Videoportero (2N)
+  #   entidades:
+  #     Puerta: lock.videoportero
+
 alias_entidades: {}
   # cocina: media_player.homepod_cocina
   # despacho: media_player.homepod_despacho

@@ -182,6 +182,18 @@ class Planta(BaseModel):
     invertir_signo_bateria: bool = False
 
 
+class TarjetaPanel(BaseModel):
+    """Una tarjeta del panel con las lecturas de un sistema de la casa.
+
+    Coche, agua, spa, riego, cine, electrodomesticos: cada uno llega por su
+    integracion de Home Assistant, y aqui se dice que entidades merecen
+    estar en el panel y con que nombre. Los valores admiten alias.
+    """
+
+    titulo: str
+    entidades: dict[str, str] = Field(default_factory=dict)
+
+
 class Camara(BaseModel):
     """Una camara y como se la nombra en cada sistema.
 
@@ -281,6 +293,8 @@ class Inventario(BaseModel):
     # defecto; el contador y la bateria se declaran cuando se sepa su mapa.
     planta: Planta | None = None
     dispositivos: list[Dispositivo] = Field(default_factory=list)
+    # Tarjetas del panel por sistema (coche, agua, spa, riego, cine...).
+    panel: list[TarjetaPanel] = Field(default_factory=list)
     # Alias en lenguaje natural -> entity_id de Home Assistant.
     # Permite decir "apaga el salon" sin que el agente adivine el entity_id.
     alias_entidades: dict[str, str] = Field(default_factory=dict)

@@ -336,6 +336,71 @@ function pintarDispositivos(lista) {
   }
 }
 
+// --- La casa segun Home Assistant ------------------------------------------
+
+function pintarLista(idTarjeta, idLista, elementos, aFila) {
+  if (!visible(idTarjeta, Array.isArray(elementos) && elementos.length)) return;
+  const ul = $(idLista);
+  ul.textContent = "";
+  for (const x of elementos) ul.appendChild(aFila(x));
+}
+
+function pintarCasa(casa) {
+  const hay = casa && typeof casa === "object" && !casa.no_disponible;
+  if (!hay) {
+    for (const id of ["presencia", "accesos", "luces", "persianas", "clima"]) visible(`tarjeta-${id}`, false);
+    $("sistemas").textContent = "";
+    return;
+  }
+
+  pintarLista("tarjeta-presencia", "presencia", casa.presencia, (p) =>
+    fila(p.en_casa ? "var(--bien)" : "var(--tinta-apagada)", p.nombre, p.en_casa ? "en casa" : "fuera"));
+
+  // Un acceso abierto o sin llave es lo unico del panel que pide atencion.
+  pintarLista("tarjeta-accesos", "accesos", casa.accesos, (a) =>
+    fila(a.abierto ? "var(--aviso)" : "var(--bien)", a.nombre, a.estado));
+
+  const luces = casa.luces;
+  if (visible("tarjeta-luces", luces && luces.total > 0)) {
+    const n = luces.encendidas.length;
+    $("luces-resumen").textContent = n
+      ? `${n} de ${luces.total} encendidas` : `Todas apagadas (${luces.total})`;
+    const ul = $("luces");
+    ul.textContent = "";
+    for (const nombre of luces.encendidas) ul.appendChild(fila("var(--aviso)", nombre, "encendida"));
+  }
+
+  pintarLista("tarjeta-persianas", "persianas", casa.persianas, (p) => {
+    const abierta = p.posicion !== null && p.posicion !== undefined ? p.posicion > 0 : p.estado !== "cerrada";
+    const detalle = p.posicion !== null && p.posicion !== undefined ? `${p.estado} · ${p.posicion} %` : p.estado;
+    return fila(abierta ? "var(--serie-1)" : "var(--tinta-apagada)", p.nombre, detalle);
+  });
+
+  pintarLista("tarjeta-clima", "clima", casa.clima, (c) => {
+    const partes = [];
+    if (c.actual !== null && c.actual !== undefined) partes.push(`${c.actual} °C`);
+    if (c.objetivo !== null && c.objetivo !== undefined) partes.push(`objetivo ${c.objetivo} °C`);
+    partes.push(c.modo);
+    const activo = !["off", "apagada", "en reposo"].includes(c.modo);
+    return fila(activo ? "var(--serie-2)" : "var(--tinta-apagada)", c.nombre, partes.join(" · "));
+  });
+
+  // Una tarjeta por sistema declarado en `panel:` (coche, agua, spa, riego...).
+  const cont = $("sistemas");
+  cont.textContent = "";
+  for (const s of casa.sistemas || []) {
+    const tarjeta = el("div", "tarjeta");
+    tarjeta.appendChild(el("h2", null, s.titulo));
+    const ul = el("ul");
+    for (const l of s.lineas) {
+      ul.appendChild(fila(l.valor === "sin dato" || l.valor === "sin conexion"
+        ? "var(--linea)" : "var(--tinta-apagada)", l.nombre, l.valor));
+    }
+    tarjeta.appendChild(ul);
+    cont.appendChild(tarjeta);
+  }
+}
+
 // Lo que suena en cada reproductor. Un reproductor apagado no es un error del
 // panel: se dice y se sigue.
 function pintarMusica(lista) {
@@ -416,6 +481,7 @@ async function refrescar() {
     pintarBateria(datos.energia);
     pintarMezcla(datos.energia);
     pintarExcedente(datos.excedente);
+    pintarCasa(datos.casa);
     pintarDispositivos(datos.dispositivos);
     pintarMusica(datos.musica);
     pintarRed(datos.red);

@@ -320,3 +320,82 @@ def test_el_chat_del_panel_habla_como_el_usuario_de_home_assistant(
                    headers={"Authorization": f"Bearer {TOKEN}"})
         assert r.status_code == 200
         assert turnos[-1]["canal"] == "http" and turnos[-1]["conversacion"] == "http:default"
+
+
+# --- La casa segun Home Assistant --------------------------------------------
+
+
+def _estados_de_una_casa() -> list[dict]:
+    from .dobles import entidad
+
+    return [
+        entidad("light.salon", "on", friendly_name="Salón"),
+        entidad("light.cocina", "off", friendly_name="Cocina"),
+        entidad("cover.persiana_suite", "open", friendly_name="Persiana suite",
+                current_position=60),
+        entidad("cover.garaje", "closed", friendly_name="Garaje", device_class="garage"),
+        entidad("lock.puerta_principal", "unlocked", friendly_name="Puerta principal"),
+        entidad("climate.salon", "heat", friendly_name="Clima salón", current_temperature=21.5,
+                temperature=22),
+        entidad("person.josue", "home", friendly_name="Josué"),
+        entidad("person.ana", "not_home", friendly_name="Ana"),
+        entidad("sensor.wallbox_potencia", "7.2", friendly_name="Potencia",
+                unit_of_measurement="kW"),
+        entidad("sensor.ecowater_sal", "34", unit_of_measurement="%"),
+    ]
+
+
+async def test_el_panel_ensena_la_casa_que_hay_en_home_assistant(settings, store) -> None:
+    from casa_ai.panel.datos import _casa
+    from casa_ai.settings import Inventario
+
+    from .dobles import adaptador, contexto
+
+    async def estados(_self):
+        return _estados_de_una_casa()
+
+    inv = Inventario.model_validate({
+        "alias_entidades": {"sal": "sensor.ecowater_sal"},
+        "panel": [
+            {"titulo": "Coche", "entidades": {"Cargando": "sensor.wallbox_potencia",
+                                              "Batería": "sensor.no_existe"}},
+            {"titulo": "Agua", "entidades": {"Sal": "sal"}},
+        ],
+    })
+    ctx = contexto(settings, inv, store, ha=adaptador(True, estados=estados))
+    casa = await _casa(ctx)
+
+    assert casa["luces"] == {"total": 2, "encendidas": ["Salón"]}
+    assert casa["persianas"] == [{"nombre": "Persiana suite", "estado": "abierta", "posicion": 60}]
+    assert casa["accesos"] == [
+        {"nombre": "Garaje", "estado": "cerrada", "abierto": False},
+        {"nombre": "Puerta principal", "estado": "abierta", "abierto": True},
+    ]
+    assert casa["clima"] == [{"nombre": "Clima salón", "actual": 21.5, "objetivo": 22,
+                              "modo": "calor"}]
+    assert casa["presencia"] == [{"nombre": "Josué", "en_casa": True},
+                                 {"nombre": "Ana", "en_casa": False}]
+    assert casa["sistemas"] == [
+        {"titulo": "Coche", "lineas": [{"nombre": "Cargando", "valor": "7.2 kW"},
+                                       {"nombre": "Batería", "valor": "sin dato"}]},
+        {"titulo": "Agua", "lineas": [{"nombre": "Sal", "valor": "34 %"}]},
+    ]
+
+
+async def test_a_un_nino_el_panel_no_le_dice_quien_esta_en_casa(settings, store) -> None:
+    from casa_ai.panel.datos import _casa
+    from casa_ai.settings import Inventario
+
+    from .dobles import adaptador, contexto
+
+    async def estados(_self):
+        return _estados_de_una_casa()
+
+    inv = Inventario.model_validate(
+        {"personas": [{"nombre": "Leo", "nivel": "nino", "dispositivos": ["tablet"]}]}
+    )
+    ctx = contexto(settings, inv, store, ha=adaptador(True, estados=estados),
+                   persona=inv.persona_de("voz", "tablet"))
+    casa = await _casa(ctx)
+    assert "presencia" not in casa
+    assert casa["luces"]["total"] == 2

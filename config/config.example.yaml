@@ -252,6 +252,33 @@ dispositivos:
 # Atajos en lenguaje natural para no depender de que el agente acierte el
 # entity_id. Todo lo de ONNA llega aqui a traves de la integracion `knx` de
 # Home Assistant, asi que estos alias son la via normal de control.
+# Tarjetas del panel, una por sistema. Luces, persianas, accesos, clima y
+# quien esta en casa salen solos (por dominio); esto es para lo que llega por
+# una integracion concreta y merece su tarjeta. Los valores admiten alias.
+panel:
+  - titulo: Coche
+    entidades:
+      Cargando: sensor.wallbox_potencia_carga
+      Estado: sensor.wallbox_estado
+      Energia de hoy: sensor.wallbox_energia_sesion
+  - titulo: Agua
+    entidades:
+      Sal: sensor.ecowater_nivel_sal
+      Dias de sal: sensor.ecowater_dias_de_sal
+      Consumo hoy: sensor.ecowater_agua_hoy
+  - titulo: Spa
+    entidades:
+      Temperatura: climate.spa
+      Bomba: switch.spa_bomba
+  - titulo: Riego
+    entidades:
+      Programa: switch.riego_programa
+      Ultimo riego: sensor.riego_ultimo
+  - titulo: Cine
+    entidades:
+      Apple TV: media_player.apple_tv_cine
+      Procesador: media_player.anthem
+
 alias_entidades:
   # Altavoces por los que Jarvis habla (voz_hablar y el informe de la manana):
   # cocina: media_player.homepod_cocina
