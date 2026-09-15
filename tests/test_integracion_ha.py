@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-COMPONENTE = RAIZ / "homeassistant" / "custom_components" / "casa_ai"
+COMPONENTE = RAIZ / "custom_components" / "casa_ai"
 
 
 def test_el_manifiesto_es_valido() -> None:

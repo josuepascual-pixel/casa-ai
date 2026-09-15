@@ -125,7 +125,7 @@ Todo en `VOZ.md`. En orden:
 3. **Atajo de Siri** en tu iPhone y en el de Ana, con el token del API.
 4. **Satélite de Leo**: un Home Assistant Voice PE en su cuarto → pipeline
    de Assist con Whisper local, agente «Casa AI» (la integración de la
-   carpeta `homeassistant/`), voz ElevenLabs. Su `device_id` a `personas:`.
+   carpeta `custom_components/`), voz ElevenLabs. Su `device_id` a `personas:`.
 
 **Pruebas**: «Oye Siri, Jarvis» → «¿cuánto sol hay?». Y Leo: «Jarvis, luz».
 

@@ -42,9 +42,10 @@ identidad:
 - **Pipeline de Assist** en Home Assistant: voz a texto con el complemento
   Whisper (local), agente de conversación **Casa AI**, texto a voz con la
   integración de ElevenLabs y la voz de Jarvis (ver abajo).
-- **La integración Casa AI** (carpeta `homeassistant/custom_components/casa_ai`
-  de este repositorio; se instala con HACS como repositorio personalizado o
-  copiando la carpeta a `config/custom_components/`). Se le da la URL del
+- **La integración Casa AI** (carpeta `custom_components/casa_ai`
+  de este repositorio; en HACS: Integraciones → menú → Repositorios
+  personalizados → esta URL, tipo «Integration»; o copiando la carpeta a
+  `config/custom_components/` de Home Assistant). Se le da la URL del
   backend y el token del API, y manda cada frase a `/voz` con el identificador
   del satélite que la oyó.
 - **La persona** se declara en `config.yaml`:

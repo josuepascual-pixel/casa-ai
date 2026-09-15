@@ -5,9 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-
 from homeassistant import config_entries
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import CONF_TOKEN, CONF_URL, DOMINIO
 
