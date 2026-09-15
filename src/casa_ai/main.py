@@ -106,6 +106,7 @@ class Identidad:
 RED_SUPERVISOR = ipaddress.ip_network("172.30.32.2/32")
 
 IDENTIDAD_TOKEN = Identidad("http", USUARIO_HTTP)
+_origenes_ignorados: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
 
 
 def _autenticador(settings: Settings):
@@ -130,6 +131,15 @@ def _autenticador(settings: Settings):
         except ValueError:
             return None
         if origen not in RED_SUPERVISOR:
+            if origen not in _origenes_ignorados:
+                # Una vez por origen: si el Supervisor cambiase de direccion,
+                # el panel daria 401 sin mas y esto es lo que lo explicaria.
+                _origenes_ignorados.add(origen)
+                log.warning(
+                    "Cabeceras de ingress desde %s, que no es el Supervisor (%s): "
+                    "se ignoran.",
+                    origen, RED_SUPERVISOR,
+                )
             return None
         usuario = request.headers.get("x-remote-user-id", "").strip()
         return Identidad("panel", f"usuario-{usuario}" if usuario else "sin-identidad")
