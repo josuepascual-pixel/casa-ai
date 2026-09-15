@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Casa</title>
+<title>Jarvis</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Ctext y=%2713%27 font-size=%2713%27%3E%E2%98%80%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <style>
   /* Paleta validada con el validador de la guia de visualizacion:
@@ -148,7 +148,7 @@
 <body>
 <div class="envoltura">
   <header>
-    <h1>Casa</h1>
+    <h1>Jarvis</h1>
     <span class="momento" id="momento"></span>
     <div class="acciones">
       <button id="tema" title="Cambiar tema">◐</button>
@@ -198,6 +198,16 @@
       <ul id="dispositivos"></ul>
     </div>
 
+    <div class="tarjeta oculto" id="tarjeta-musica">
+      <h2>Música</h2>
+      <ul id="musica"></ul>
+    </div>
+
+    <div class="tarjeta oculto" id="tarjeta-red">
+      <h2>Red</h2>
+      <ul id="red"></ul>
+    </div>
+
     <div class="tarjeta oculto" id="tarjeta-camaras">
       <h2>Cámaras</h2>
       <div class="camaras" id="camaras"></div>
@@ -205,7 +215,7 @@
 
     <div class="tarjeta" id="chat">
       <h2>Preguntar al agente</h2>
-      <textarea id="mensaje" rows="2" placeholder="¿puedo poner la lavadora?"></textarea>
+      <textarea id="mensaje" rows="2" placeholder="Jarvis, ¿puedo poner la lavadora?"></textarea>
       <button id="enviar" style="margin-top:10px">Enviar</button>
       <div id="respuesta"></div>
     </div>

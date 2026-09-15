@@ -336,6 +336,53 @@ function pintarDispositivos(lista) {
   }
 }
 
+// Lo que suena en cada reproductor. Un reproductor apagado no es un error del
+// panel: se dice y se sigue.
+function pintarMusica(lista) {
+  if (!visible("tarjeta-musica", Array.isArray(lista) && lista.length)) return;
+
+  const ul = $("musica");
+  ul.textContent = "";
+  for (const m of lista) {
+    const nombre = m.zona ? `${m.reproductor} · ${m.zona}` : m.reproductor;
+    if (m.error) {
+      ul.appendChild(fila("var(--linea)", nombre, "no responde"));
+    } else if (m.estado === "play" || m.estado === "stream") {
+      const que = [m.titulo, m.artista].filter(Boolean).join(" — ") || m.servicio || "sonando";
+      ul.appendChild(fila("var(--bien)", nombre, que));
+    } else {
+      ul.appendChild(fila("var(--tinta-apagada)", nombre, "en silencio"));
+    }
+  }
+}
+
+// La salud de la red segun UniFi: internet, wifi y cable. Nada de lo que
+// pinta aqui permite tocar la red; eso va por el chat y con confirmacion.
+const SUBSISTEMAS_RED = new Map([
+  ["wan", "Internet"], ["wlan", "WiFi"], ["lan", "Cable"], ["vpn", "VPN"],
+]);
+
+function pintarRed(red) {
+  if (!visible("tarjeta-red", red && typeof red === "object" && !red.no_disponible
+      && Object.keys(red).length)) return;
+
+  const ul = $("red");
+  ul.textContent = "";
+  for (const [clave, etiqueta] of SUBSISTEMAS_RED) {
+    const s = red[clave];
+    if (!s) continue;
+    const bien = s.estado === "ok";
+    let detalle = bien ? "bien" : (s.estado || "?");
+    if (clave === "wan" && bien && s.latencia_ms !== undefined && s.latencia_ms !== null) {
+      detalle = `bien · ${s.latencia_ms} ms`;
+    } else if (s.usuarios !== undefined && s.usuarios !== null) {
+      detalle = `${bien ? "bien" : detalle} · ${s.usuarios} conectados`;
+    }
+    if (s.caidos) detalle += ` · ${s.caidos} caídos`;
+    ul.appendChild(fila(bien ? "var(--bien)" : "var(--critico)", etiqueta, detalle));
+  }
+}
+
 async function pintarCamaras(camaras) {
   if (!visible("tarjeta-camaras", Array.isArray(camaras) && camaras.length)) return;
   const cont = $("camaras");
@@ -370,6 +417,8 @@ async function refrescar() {
     pintarMezcla(datos.energia);
     pintarExcedente(datos.excedente);
     pintarDispositivos(datos.dispositivos);
+    pintarMusica(datos.musica);
+    pintarRed(datos.red);
     pintarCamaras(datos.camaras);
   } catch (e) {
     $("momento").textContent = `sin datos: ${e.message}`;

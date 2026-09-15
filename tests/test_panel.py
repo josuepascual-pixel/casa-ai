@@ -77,13 +77,13 @@ def test_la_pagina_se_sirve_sin_token(cliente: TestClient) -> None:
     """No lleva ningun dato: pide el token y llama al API con el."""
     r = cliente.get("/panel")
     assert r.status_code == 200
-    assert "Casa" in r.text
+    assert "Jarvis" in r.text
     # Y no filtra nada que no deba estar en un HTML publico.
     assert TOKEN not in r.text
 
     assert cliente.get("/panel.js").status_code == 200
     # La raiz es el panel: es lo que abre el ingress de Home Assistant.
-    assert cliente.get("/").status_code == 200 and "Casa" in cliente.get("/").text
+    assert cliente.get("/").status_code == 200 and "Jarvis" in cliente.get("/").text
 
 
 def test_los_datos_del_panel_si_exigen_token(cliente: TestClient) -> None:
