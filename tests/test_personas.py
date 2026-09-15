@@ -13,7 +13,7 @@ from casa_ai.settings import Inventario, Persona, Settings
 from casa_ai.store import Store
 from casa_ai.tools import construir_registro
 
-from .dobles import contexto, entidad, estados_ha, servicio_ha
+from .dobles import contexto, entidad, estado_ha, estados_ha, servicio_ha
 
 PERSONAS = {
     "personas": [
@@ -125,6 +125,10 @@ async def test_la_vista_restringida_no_toca_ni_mira_fuera_de_su_lista(settings) 
         await vista.llamar_servicio("light", "turn_on", {"entity_id": ["light.a", "lock.puerta"]})
 
     assert [e["entity_id"] for e in await vista.estados()] == ["light.leo"]
+    # `cover` esta permitido, pero un garaje no es una persiana.
+    estado_ha("cover.garaje", "closed", device_class="garage")
+    with pytest.raises(AdapterError, match="puerta o un porton"):
+        await vista.llamar_servicio("cover", "open_cover", {"entity_id": "cover.garaje"})
     assert [e["entity_id"] for e in await vista.buscar_entidades(texto="leo")] == ["light.leo"]
     assert (await vista.estado("light.leo"))["entity_id"] == "light.leo"
     await vista.llamar_servicio("light", "turn_on", {"entity_id": "light.leo"})

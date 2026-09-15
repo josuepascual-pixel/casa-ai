@@ -9,7 +9,7 @@ WhatsApp, texto o nota de voz.
 
 ```bash
 pip install -e ".[dev,voz]"                  # `voz` es opcional y pesada
-PYTHONPATH=src python -m pytest tests -q     # 497 tests, no tocan hardware
+PYTHONPATH=src python -m pytest tests -q     # 501 tests, no tocan hardware
 ruff check src tests                         # debe quedar limpio
 casa-ai                                      # backend + bot + rutinas
 
@@ -130,7 +130,9 @@ captura de verdad. Por eso «¿hay alguien en la puerta?» funciona.
 - **Listas blancas, no listas negras.** Servicios de Home Assistant
   (`SERVICIOS_PERMITIDOS`) y direcciones del bus KNX (solo las del YAML).
   Fuera a propósito: `homeassistant.stop`, `lock.unlock`,
-  `alarm_control_panel.alarm_disarm`, `remote.send_command`. Y los `script.`
+  `alarm_control_panel.alarm_disarm`, `remote.send_command`, `knx.send`. Un
+  `cover` con `device_class` garage, gate o door es abrir la casa: solo
+  `casa_abrir_acceso` (riesgo alto). Y los `script.`
   denegados salvo los declarados: un script ejecuta cualquier secuencia y se
   saltaría esas exclusiones.
 - **La autorización falla cerrada.** Lista de chats vacía = no se atiende a

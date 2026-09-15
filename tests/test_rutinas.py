@@ -263,3 +263,18 @@ async def test_una_rutina_no_ve_la_herramienta_de_confirmacion(
 
     for confirmacion in ("en_banda", "boton", "imposible"):
         assert "ejecutar_accion_pendiente" not in nombres(confirmacion)
+
+
+async def test_el_informe_no_llega_a_los_chats_de_ninos(settings_con_chat: Settings) -> None:
+    """El informe corre como dueno y cuenta camaras y quien esta en casa."""
+    app = app_falsa(settings_con_chat, "Todo bien.")
+    app.inventario = Inventario.model_validate(
+        {"personas": [{"nombre": "Papa", "nivel": "dueno", "telegram": ["555"]},
+                      {"nombre": "Peque", "nivel": "nino", "telegram": ["777"]}]}
+    )
+    bot = BotFalso()
+    rutinas = Rutinas(app, bot)  # type: ignore[arg-type]
+
+    await rutinas._informe()
+
+    assert {chat for chat, _ in bot.enviados} == {555}

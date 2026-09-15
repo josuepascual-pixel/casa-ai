@@ -21,7 +21,7 @@ from casa_ai.store import Store
 from casa_ai.tools.casa import HERRAMIENTAS
 
 from .conftest import HA_URL
-from .dobles import contexto, entidad, estados_ha, servicio_ha
+from .dobles import contexto, entidad, estado_ha, estados_ha, servicio_ha
 
 ACCION = next(h for h in HERRAMIENTAS if h.nombre == "casa_accion")
 ESTADO = next(h for h in HERRAMIENTAS if h.nombre == "casa_estado")
@@ -90,6 +90,7 @@ async def test_brillo_sin_valor_falla_claro(ctx: Contexto) -> None:
 
 @respx.mock
 async def test_persianas(ctx: Contexto) -> None:
+    estado_ha("cover.persiana_salon", "closed", device_class="shutter")
     arriba = servicio_ha("cover", "open_cover")
     posicion = servicio_ha("cover", "set_cover_position")
 
@@ -201,9 +202,52 @@ async def test_una_entidad_inventada_falla_claro(ctx: Contexto) -> None:
     await ctx.ha.cerrar()
 
 
-async def test_una_accion_no_permitida_se_bloquea(ctx: Contexto) -> None:
-    with pytest.raises(AdapterError, match="no permitido"):
+async def test_una_accion_fuera_de_la_lista_se_bloquea(ctx: Contexto) -> None:
+    """`accion` era texto libre y acababa como nombre de servicio: `unlock`,
+    `alarm_arm_away`, `vacuum.start`... Ahora es una lista cerrada."""
+    with pytest.raises(AdapterError, match="no es una accion de casa_accion"):
         await ACCION.handler(ctx, entidad="lock.puerta", accion="unlock")
+    with pytest.raises(AdapterError, match="no es una accion de casa_accion"):
+        await ACCION.handler(ctx, entidad="alarm_control_panel.casa", accion="alarm_arm_away")
+    assert set(ACCION.esquema["properties"]["accion"]["enum"]) >= {"subir", "modo", "pulsar"}
+    await ctx.ha.cerrar()
+
+
+# --- Puertas y portones -----------------------------------------------------
+
+
+@respx.mock
+async def test_un_garaje_no_se_abre_con_casa_accion(ctx: Contexto) -> None:
+    """Un cover con device_class garage/gate/door es abrir la casa: va por la
+    puerta estrecha de riesgo alto, como la cerradura."""
+    estado_ha("cover.garaje", "closed", device_class="garage")
+    abrir = servicio_ha("cover", "open_cover")
+    with pytest.raises(AdapterError, match="casa_abrir_acceso"):
+        await ACCION.handler(ctx, entidad="cover.garaje", accion="subir")
+    assert not abrir.called
+    # Cerrarlo si se puede: no abre nada.
+    cerrar = servicio_ha("cover", "close_cover")
+    await ACCION.handler(ctx, entidad="cover.garaje", accion="bajar")
+    assert cerrar.called
+    await ctx.ha.cerrar()
+
+
+@respx.mock
+async def test_casa_abrir_acceso_abre_solo_accesos(ctx: Contexto) -> None:
+    from casa_ai.agent.registry import Riesgo
+    from casa_ai.tools import herramienta
+
+    abrir_acceso = herramienta("casa_abrir_acceso")
+    assert abrir_acceso.riesgo is Riesgo.ALTO and not abrir_acceso.para_ninos
+
+    estado_ha("cover.garaje", "closed", device_class="garage")
+    estado_ha("cover.persiana_salon", "closed", device_class="shutter")
+    abrir = servicio_ha("cover", "open_cover")
+
+    await abrir_acceso.handler(ctx, entidad="cover.garaje")
+    assert _cuerpo(abrir)["entity_id"] == "cover.garaje"
+    with pytest.raises(AdapterError, match="no es una puerta ni un porton"):
+        await abrir_acceso.handler(ctx, entidad="cover.persiana_salon")
     await ctx.ha.cerrar()
 
 

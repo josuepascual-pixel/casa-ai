@@ -45,9 +45,15 @@ class AgenteCasaAI(conversation.ConversationEntity):
     async def async_process(
         self, user_input: conversation.ConversationInput
     ) -> conversation.ConversationResult:
-        # El aparato que oyo la frase es la identidad. Si no hay aparato (se
-        # escribio en la interfaz de HA), lo es el usuario de HA que escribio.
-        dispositivo = user_input.device_id or f"usuario-{user_input.context.user_id or 'ha'}"
+        # La identidad es el usuario de Home Assistant cuando lo hay: cualquier
+        # cuenta de HA puede mandar `device_id` a mano por la API de
+        # conversacion, asi que el aparato solo vale cuando no hay usuario
+        # detras (un satelite cuyo pipeline lanza el propio HA).
+        usuario = user_input.context.user_id
+        if usuario:
+            dispositivo = f"usuario-{usuario}"
+        else:
+            dispositivo = user_input.device_id or "sin-identidad"
         sesion = async_get_clientsession(self.hass)
         try:
             async with sesion.post(

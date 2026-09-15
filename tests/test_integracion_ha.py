@@ -28,5 +28,7 @@ def test_todos_los_ficheros_compilan_y_llaman_a_voz() -> None:
         ast.parse(ruta.read_text("utf-8"), filename=str(ruta))
     conversacion = (COMPONENTE / "conversation.py").read_text("utf-8")
     assert '/voz"' in conversacion and '"dispositivo": dispositivo' in conversacion
-    # La identidad es el aparato que oyo la frase, nunca el texto.
-    assert "user_input.device_id" in conversacion
+    # La identidad es el usuario de HA cuando lo hay; el aparato solo si no
+    # hay usuario (cualquier cuenta puede mandar device_id a mano por la API).
+    assert "user_input.context.user_id" in conversacion
+    assert conversacion.index("context.user_id") < conversacion.index("user_input.device_id")

@@ -46,8 +46,11 @@ identidad:
   de este repositorio; en HACS: Integraciones → menú → Repositorios
   personalizados → esta URL, tipo «Integration»; o copiando la carpeta a
   `config/custom_components/` de Home Assistant). Se le da la URL del
-  backend y el token del API, y manda cada frase a `/voz` con el identificador
-  del satélite que la oyó.
+  backend y el token del API, y manda cada frase a `/voz` con una identidad:
+  el usuario de Home Assistant que habló si lo hay (cualquier cuenta de HA
+  puede inventarse un `device_id` por la API, así que el aparato solo cuenta
+  cuando no hay usuario detrás, como en un satélite cuyo pipeline lanza el
+  propio HA).
 - **La persona** se declara en `config.yaml`:
 
   ```yaml

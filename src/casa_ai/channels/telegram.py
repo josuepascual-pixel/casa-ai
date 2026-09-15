@@ -137,6 +137,21 @@ class BotTelegram:
                 "de la casa, anadelo a TELEGRAM_CHATS_AUTORIZADOS y reinicia."
             )
 
+    @staticmethod
+    def _usuario(update: Update) -> str:
+        """Quien habla. En un grupo (id negativo) es la persona, no el grupo.
+
+        La autorizacion sigue siendo por chat, pero la persona, sus permisos y
+        los botones de confirmacion van con quien escribio: si no, un invitado
+        anadido al grupo heredaria el nivel del dueno y podria pulsar el boton
+        de una accion que propuso otro.
+        """
+        chat = update.effective_chat
+        assert chat is not None
+        if chat.id < 0 and update.effective_user is not None:
+            return str(update.effective_user.id)
+        return str(chat.id)
+
     # --- Nucleo ----------------------------------------------------------
     async def _procesar(self, update: Update, entrada: Any) -> None:
         chat = update.effective_chat
@@ -146,7 +161,7 @@ class BotTelegram:
         await update.message.chat.send_action(ChatAction.TYPING)
         respuesta = await self.app.responder(
             canal=CANAL,
-            usuario=str(chat.id),
+            usuario=self._usuario(update),
             conversacion=conversacion,
             entrada=entrada,
             # Este canal tiene botones, asi que el token de confirmacion no
@@ -200,7 +215,7 @@ class BotTelegram:
         texto = await self.app.resolver_pulsacion(
             consulta.data or "",
             canal=CANAL,
-            usuario=str(chat.id),
+            usuario=self._usuario(update),
             conversacion=f"{CANAL}:{chat.id}",
         )
         if texto is None:
@@ -235,7 +250,7 @@ class BotTelegram:
             except TranscripcionError as e:
                 await update.message.reply_text(str(e))
                 return
-        log.info("Nota de voz transcrita: %s", texto)
+        log.debug("Nota de voz transcrita: %s", texto)
         # Se muestra la transcripcion para que el usuario vea que se entendio
         # antes de que el agente actue sobre ello.
         await update.message.reply_text(f"🎙 «{texto}»")
@@ -257,7 +272,7 @@ class BotTelegram:
     async def _cmd_start(self, update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
         chat = update.effective_chat
         assert update.message is not None and chat is not None
-        persona = self.app.inventario.persona_de(CANAL, str(chat.id))
+        persona = self.app.inventario.persona_de(CANAL, self._usuario(update))
         saludo = f"{self.app.nombre_asistente} a su servicio"
         if persona is not None:
             saludo += f", {persona.nombre}"
@@ -288,7 +303,7 @@ class BotTelegram:
             for k, v in cfg.items()
             if isinstance(v, bool)
         ]
-        persona = self.app.inventario.persona_de(CANAL, str(chat.id))
+        persona = self.app.inventario.persona_de(CANAL, self._usuario(update))
         if persona is not None:
             lineas.append(f"\nHablas como {persona.nombre} ({persona.nivel}).")
         herramientas = cfg.get("herramientas_activas", [])
@@ -303,7 +318,7 @@ class BotTelegram:
 
     def _es_nino(self, update: Update) -> bool:
         chat = update.effective_chat
-        persona = self.app.inventario.persona_de(CANAL, str(chat.id)) if chat else None
+        persona = self.app.inventario.persona_de(CANAL, self._usuario(update)) if chat else None
         return persona is not None and persona.es_nino
 
     @solo_autorizados

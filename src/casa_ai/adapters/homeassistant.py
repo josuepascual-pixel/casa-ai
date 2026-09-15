@@ -69,7 +69,6 @@ SERVICIOS_PERMITIDOS: dict[str, set[str]] = {
     "button": {"press"},
     "vacuum": {"start", "pause", "return_to_base"},
     "alarm_control_panel": {"alarm_arm_home", "alarm_arm_away"},  # desarmar, no
-    "knx": {"send"},
 }
 
 
@@ -78,6 +77,16 @@ SERVICIOS_PERMITIDOS: dict[str, set[str]] = {
 # stream), ni personas (dicen quien esta en casa): la lista blanca es lo que no
 # tiene consecuencias si se pulsa cien veces ni cuenta nada que no deba.
 DOMINIOS_PARA_NINOS = frozenset({"light", "media_player", "cover", "fan"})
+
+# Un `cover` puede ser una persiana o la puerta del garaje: Home Assistant los
+# distingue por `device_class`. Abrir uno de estos es abrir la casa, y va por
+# la misma puerta estrecha que la cerradura: riesgo alto, nunca un nino.
+ACCESOS = frozenset({"garage", "gate", "door"})
+SERVICIOS_QUE_ABREN = frozenset({"open_cover", "set_cover_position", "toggle", "open_cover_tilt"})
+
+
+def es_acceso(estado: dict[str, Any]) -> bool:
+    return str((estado.get("attributes") or {}).get("device_class", "")) in ACCESOS
 
 
 def _dominio(entity_id: str) -> str:
@@ -161,6 +170,11 @@ class HomeAssistantRestringido:
         self._vetar(f"{dominio}.")
         for eid in _entidades_de(datos):
             self._vetar(eid)
+            if dominio == "cover" and es_acceso(await self._ha.estado(eid)):
+                raise AdapterError(
+                    f"'{eid}' es una puerta o un porton, no una persiana: eso no lo "
+                    "abre ni lo cierra un nino. Dile que se lo pida a sus padres."
+                )
         return await self._ha.llamar_servicio(dominio, servicio, datos)
 
 

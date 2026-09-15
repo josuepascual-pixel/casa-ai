@@ -58,10 +58,11 @@ class PeticionChat(BaseModel):
 class PeticionVoz(BaseModel):
     """Lo que manda la integracion de Home Assistant por cada frase dicha.
 
-    `dispositivo` es el identificador del satelite (o del usuario de HA) tal
-    como lo conoce Home Assistant, que es quien ha verificado de donde viene
-    la voz. Con el se resuelve la persona (`personas:` del inventario), asi que
-    un satelite del cuarto del nino solo obtiene lo que un nino puede.
+    `dispositivo` es la identidad que pone la integracion de Home Assistant:
+    el usuario de HA que hablo (`usuario-<id>`) o, solo si no hay usuario, el
+    satelite que oyo la frase. Con el se resuelve la persona (`personas:` del
+    inventario), asi que un satelite del cuarto del nino solo obtiene lo que
+    un nino puede, y lo que no este declarado tambien es nino.
     """
 
     dispositivo: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.:@-]+$")

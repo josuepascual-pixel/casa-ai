@@ -15,7 +15,7 @@ personas:
     telegram: ["PON_AQUI_TU_CHAT_ID"]
   - nombre: Ana
     nivel: adulto
-    telegram: ["PON_AQUI_EL_CHAT_ID_DE_LAURA"]
+    telegram: ["PON_AQUI_EL_CHAT_ID_DE_ANA"]
   - nombre: Leo
     nivel: nino
     dispositivos: []          # el device_id del satelite de su cuarto

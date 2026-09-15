@@ -203,9 +203,24 @@ Honestamente:
   escena) sin preguntar. Son reversibles y evidentes, y por eso están en ese
   nivel, pero no es lo mismo que ser inmune.
 - **`/chat` usa un token compartido**, y cuenta como el dueño. `/voz` es el
-  único endpoint donde el cuerpo trae una identidad (la del aparato que oyó
-  la frase, que pone Home Assistant). No escala nada: quien llama ya tiene el
-  `API_TOKEN`, con el que `/chat` le da acceso de dueño; y un aparato que no
-  esté declarado en `personas:` es un niño, haya sección o no. Lo que sí
-  puede hacer quien tenga el token es hablar *como* un aparato declarado de
-  un adulto, con confirmaciones en banda: es el mismo poder que ya tiene.
+  único endpoint donde el cuerpo trae una identidad, y la pone la
+  integración de Home Assistant: el usuario de HA que habló, y solo si no lo
+  hay, el aparato. No es el `device_id` a secas porque cualquier cuenta de HA
+  puede mandarlo a mano por la API de conversación. No escala nada: quien
+  llama ya tiene el `API_TOKEN`, con el que `/chat` le da acceso de dueño; y
+  una identidad que no esté declarada en `personas:` es un niño, haya sección
+  o no.
+- **En los canales sin botones, el «sí» lo reconoce el código.** El modelo no
+  tiene ninguna herramienta para confirmar y el token no entra en su
+  contexto: `Aplicacion.responder` mira si hay una propuesta del turno
+  anterior y decide con `afirmaciones.py`. Un sí claro ejecuta, un no claro
+  cancela, cualquier otra cosa cancela y sigue. Antes la garantía era «pasó
+  un turno humano», y una inyección en el turno siguiente podía confirmar.
+- **Abrir la casa es riesgo alto también cuando es un `cover`.** Una puerta
+  de garaje, un portón o una puerta motorizada son `cover` con
+  `device_class` garage, gate o door: `casa_accion` los rechaza y solo
+  `casa_abrir_acceso` (riesgo alto, con confirmación, nunca para niños) los
+  abre. Las acciones de `casa_accion` son una lista cerrada.
+- **En un grupo de Telegram la persona es quien escribe**, no el grupo: el
+  nivel y los botones de confirmación van con el usuario, y el informe de la
+  mañana no se manda a chats de niños.

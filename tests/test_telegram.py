@@ -390,3 +390,34 @@ def test_el_largo_del_prefijo_no_esta_a_mano() -> None:
     assert decodificar(codificar(CANCELAR, token)) == (CANCELAR, token)
     assert decodificar("otracosa:" + token) is None
     assert decodificar("") is None
+
+
+async def test_en_un_grupo_la_persona_es_quien_escribe(settings: Settings) -> None:
+    """Un invitado anadido al grupo del dueno no hereda su nivel ni puede
+    pulsar el boton de una accion que propuso otro: la identidad es el usuario."""
+    from casa_ai.settings import Inventario
+
+    autorizado = settings.model_copy(
+        update={"telegram_token": "123:abc", "telegram_chats_autorizados": "-1001"}
+    )
+    bot = BotTelegram(AplicacionFalsa(autorizado))  # type: ignore[arg-type]
+    bot.app.inventario = Inventario.model_validate(
+        {"personas": [{"nombre": "Papa", "nivel": "dueno", "telegram": ["42"]}]}
+    )
+
+    class UsuarioFalso:
+        id = 42
+
+    update = UpdateFalso(chat_id=-1001)
+    update.effective_user = UsuarioFalso()
+    await bot._texto(update, None)  # type: ignore[arg-type]
+    turno = bot.app.turnos[-1]  # type: ignore[attr-defined]
+    assert turno["usuario"] == "42" and turno["conversacion"] == "telegram:-1001"
+
+    class Invitado:
+        id = 99
+
+    update = UpdateFalso(chat_id=-1001)
+    update.effective_user = Invitado()
+    await bot._cmd_estado(update, None)  # type: ignore[arg-type]
+    assert "alguien sin registrar (nino)" in update.message.respuestas[0]

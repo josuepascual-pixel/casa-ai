@@ -92,7 +92,20 @@ class Rutinas:
             self.scheduler.shutdown(wait=False)
 
     def _destinos(self) -> set[int]:
-        return self.app.settings.chats_telegram if self.bot is not None else set()
+        """Los chats autorizados que no son de un nino.
+
+        El informe corre como dueno y cuenta camaras, red y quien esta en
+        casa: justo lo que a un nino no se le da.
+        """
+        if self.bot is None:
+            return set()
+        inventario = self.app.inventario
+        salida = set()
+        for chat in self.app.settings.chats_telegram:
+            persona = inventario.persona_de("telegram", str(chat))
+            if persona is None or not persona.es_nino:
+                salida.add(chat)
+        return salida
 
     async def _turno(self, prompt: str, conversacion: str) -> str:
         # Conversacion propia y efimera: una rutina no debe heredar el hilo del

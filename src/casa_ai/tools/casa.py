@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..adapters.base import AdapterError
+from ..adapters.homeassistant import SERVICIOS_QUE_ABREN, es_acceso
 from ..agent.registry import Contexto, Herramienta, Riesgo, esquema
 from .comun import resolver_unica
 
@@ -98,6 +99,11 @@ async def _accion(
     parametros: dict[str, Any] = {}
 
     nombre_accion = accion.strip().lower()
+    if nombre_accion not in _SERVICIOS and nombre_accion != "modo":
+        raise AdapterError(
+            f"'{accion}' no es una accion de casa_accion. Las que hay: "
+            f"{', '.join(sorted([*_SERVICIOS, 'modo']))}."
+        )
     servicio = _SERVICIOS.get(nombre_accion, nombre_accion)
 
     # "modo" depende del dominio: un clima usa set_hvac_mode/hvac_mode y un
@@ -158,6 +164,15 @@ async def _accion(
             raise AdapterError("Para 'brillo' hace falta un valor de 0 a 100.")
         parametros["brightness_pct"] = _porcentaje(valor)
 
+    if dominio == "cover" and servicio in SERVICIOS_QUE_ABREN:
+        # Se mira al final, con los argumentos ya validados: la lectura del
+        # estado es una peticion a HA y no hace falta para rechazar un valor.
+        if es_acceso(await ctx.ha.estado(eid)):
+            raise AdapterError(
+                f"'{eid}' es una puerta de garaje, un porton o una puerta, no una "
+                "persiana. Abrirla es abrir la casa: usa casa_abrir_acceso, que pide "
+                "confirmacion."
+            )
     await ctx.ha.llamar_servicio(dominio, servicio, {"entity_id": eid, **parametros})
     return {
         "entity_id": eid,
@@ -165,6 +180,25 @@ async def _accion(
         "parametros": parametros,
         "detalle": "Orden enviada a Home Assistant.",
     }
+
+
+async def _abrir_acceso(ctx: Contexto, entidad: str) -> dict[str, Any]:
+    """Abre una puerta de garaje, un porton o una puerta motorizada.
+
+    Herramienta aparte de `casa_accion` por lo mismo que `lock.unlock` no esta
+    en la lista blanca: abrir la casa no es mover una persiana. Es de riesgo
+    alto, exige confirmacion y no es para ninos.
+    """
+    eid = _resolver_alias(ctx, entidad)
+    if not eid.startswith("cover."):
+        raise AdapterError(f"'{entidad}' no es un cover de Home Assistant.")
+    if not es_acceso(await ctx.ha.estado(eid)):
+        raise AdapterError(
+            f"'{eid}' no es una puerta ni un porton (device_class garage, gate o "
+            "door): es una persiana o un toldo, y eso va por casa_accion."
+        )
+    await ctx.ha.llamar_servicio("cover", "open_cover", {"entity_id": eid})
+    return {"entity_id": eid, "detalle": "Abriendo. Acuerdate de cerrarla."}
 
 
 async def _escena(ctx: Contexto, nombre: str) -> dict[str, Any]:
@@ -248,7 +282,7 @@ HERRAMIENTAS = [
         esquema=esquema(
             {
                 "entidad": {"type": "string", "description": "entity_id o alias"},
-                "accion": {"type": "string"},
+                "accion": {"type": "string", "enum": sorted([*_SERVICIOS, "modo"])},
                 "valor": {"type": "number", "description": "Para brillo, posicion o temperatura"},
                 "temperatura": {"type": "number", "description": "Grados objetivo"},
                 "modo": {
@@ -264,6 +298,23 @@ HERRAMIENTAS = [
         riesgo=Riesgo.MEDIO,
         para_ninos=True,
         handler=_accion,
+        requiere="ha",
+    ),
+    Herramienta(
+        nombre="casa_abrir_acceso",
+        descripcion=(
+            "Abre una puerta de garaje, un porton o una puerta motorizada (un cover "
+            "con device_class garage, gate o door). Es abrir la casa: solo cuando el "
+            "usuario lo pida de forma explicita, y siempre pide confirmacion. Para "
+            "persianas y toldos usa casa_accion."
+        ),
+        esquema=esquema(
+            {"entidad": {"type": "string", "description": "Alias o entity_id cover.*"}},
+            obligatorias=["entidad"],
+        ),
+        riesgo=Riesgo.ALTO,
+        handler=_abrir_acceso,
+        resumen_confirmacion=lambda a: f"Abrir {a.get('entidad')} (puerta o porton)",
         requiere="ha",
     ),
     Herramienta(
