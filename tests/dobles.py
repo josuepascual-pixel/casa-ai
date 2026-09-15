@@ -13,8 +13,7 @@ import httpx
 import respx
 
 from casa_ai.adapters.camaras_base import elegir_camaras
-from casa_ai.agent.registry import Contexto, Herramienta, Riesgo, esquema
-from casa_ai.agent.safety import TOOL_CONFIRMAR
+from casa_ai.agent.registry import Contexto
 from casa_ai.app import Aplicacion
 from casa_ai.settings import Inventario, Settings
 from casa_ai.store import Store
@@ -83,30 +82,6 @@ def contexto(
 
 def _resolver(valor: Any) -> Any:
     return adaptador(valor) if isinstance(valor, bool) else valor
-
-
-def herramienta_confirmar() -> Herramienta:
-    """La herramienta de confirmacion, que el Ejecutor intercepta antes de llamar.
-
-    Si su handler llega a ejecutarse es que la interceptacion ha fallado, asi
-    que revienta en vez de devolver algo plausible.
-    """
-
-    async def confirmar(_ctx: Contexto, token: str) -> Any:
-        raise RuntimeError("el Ejecutor tenia que haberla interceptado")
-
-    return Herramienta(
-        nombre=TOOL_CONFIRMAR,
-        descripcion="Ejecuta una accion pendiente de confirmacion",
-        esquema=esquema({"token": {"type": "string"}}, obligatorias=["token"]),
-        riesgo=Riesgo.MEDIO,
-        handler=confirmar,
-    )
-
-
-def token_del_aviso(aviso: str) -> str:
-    """Saca el token del texto con que el Ejecutor pide confirmacion."""
-    return aviso.split("token:", 1)[1].split("\n", 1)[0].strip()
 
 
 class StoreFalso:

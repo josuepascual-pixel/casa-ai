@@ -8,11 +8,11 @@ import pytest
 
 from casa_ai.adapters.base import AdapterError
 from casa_ai.agent.registry import Contexto, Herramienta, Registro, Riesgo, esquema
-from casa_ai.agent.safety import TOOL_CONFIRMAR, Ejecutor
+from casa_ai.agent.safety import Ejecutor
 from casa_ai.settings import Inventario, Settings
 from casa_ai.store import Store
 
-from .dobles import contexto, herramienta_confirmar
+from .dobles import contexto
 
 
 def _contexto(settings: Settings, store: Store, inventario: Inventario) -> Contexto:
@@ -59,7 +59,6 @@ def _registro(ejecutadas: list[str]) -> Registro:
             nombre="explota", descripcion="d" * 50, esquema=esquema({}),
             riesgo=Riesgo.MEDIO, handler=explota,
         ),
-        herramienta_confirmar(),
     )
     return registro
 
@@ -71,29 +70,45 @@ def entorno(settings: Settings, store: Store, inventario: Inventario):
     return Ejecutor(_registro(ejecutadas), ctx), ejecutadas, store
 
 
+def _token_de(store: Store, conversacion: str = "telegram:123") -> str:
+    return store.pendientes_de(conversacion)[0]["token"]
+
+
 async def test_riesgo_alto_no_se_ejecuta_a_la_primera(entorno) -> None:
-    ejecutor, ejecutadas, _ = entorno
+    ejecutor, ejecutadas, store = entorno
+    store.nuevo_turno("telegram:123")
     resultado, es_error = await ejecutor.ejecutar("peligrosa", {"valor": 7})
 
     assert es_error is False
     assert ejecutadas == []  # lo importante: NO se ha tocado nada
     assert "REQUIERE CONFIRMACION" in resultado
     assert "Hacer algo gordo con 7" in resultado
-    assert TOOL_CONFIRMAR in resultado
+    # El token existe, guardado; su VALOR no aparece en nada que lea el modelo.
+    assert _token_de(store) not in resultado
+    assert "«si»" in resultado
 
 
-async def test_confirmacion_ejecuta_la_accion_original(entorno) -> None:
+async def test_el_modelo_no_tiene_ninguna_herramienta_para_confirmar(entorno) -> None:
+    """Es la garantia: una inyeccion no tiene a que apuntar. Antes existia
+    `ejecutar_accion_pendiente` y el token viajaba en el contexto."""
     ejecutor, ejecutadas, store = entorno
     store.nuevo_turno("telegram:123")
-    aviso, _ = await ejecutor.ejecutar("peligrosa", {"valor": 42})
-    token = [
-        linea.split("token:", 1)[1].strip()
-        for linea in aviso.splitlines()
-        if linea.startswith("token:")
-    ][0]
+    await ejecutor.ejecutar("peligrosa", {"valor": 42})
+    token = _token_de(store)
 
-    store.nuevo_turno("telegram:123")  # el usuario responde "si"
-    resultado, es_error = await ejecutor.ejecutar(TOOL_CONFIRMAR, {"token": token})
+    resultado, es_error = await ejecutor.ejecutar("ejecutar_accion_pendiente", {"token": token})
+
+    assert es_error is True and "No existe" in resultado
+    assert ejecutadas == []
+    assert len(store.pendientes_de("telegram:123")) == 1  # sigue pendiente
+
+
+async def test_confirmar_ejecuta_la_accion_original(entorno) -> None:
+    ejecutor, ejecutadas, store = entorno
+    store.nuevo_turno("telegram:123")
+    await ejecutor.ejecutar("peligrosa", {"valor": 42})
+
+    resultado, es_error = await ejecutor.confirmar(_token_de(store))
 
     assert es_error is False
     assert resultado == {"hecho": 42}
@@ -102,7 +117,7 @@ async def test_confirmacion_ejecuta_la_accion_original(entorno) -> None:
 
 async def test_token_invalido_no_ejecuta_nada(entorno) -> None:
     ejecutor, ejecutadas, _ = entorno
-    resultado, es_error = await ejecutor.ejecutar(TOOL_CONFIRMAR, {"token": "inventado"})
+    resultado, es_error = await ejecutor.confirmar("inventado")
     assert es_error is True
     assert "no existe" in resultado
     assert ejecutadas == []
@@ -111,12 +126,11 @@ async def test_token_invalido_no_ejecuta_nada(entorno) -> None:
 async def test_confirmacion_no_es_reutilizable(entorno) -> None:
     ejecutor, ejecutadas, store = entorno
     store.nuevo_turno("telegram:123")
-    aviso, _ = await ejecutor.ejecutar("peligrosa", {"valor": 1})
-    token = aviso.split("token:", 1)[1].split("\n", 1)[0].strip()
+    await ejecutor.ejecutar("peligrosa", {"valor": 1})
+    token = _token_de(store)
 
-    store.nuevo_turno("telegram:123")
-    await ejecutor.ejecutar(TOOL_CONFIRMAR, {"token": token})
-    _, es_error = await ejecutor.ejecutar(TOOL_CONFIRMAR, {"token": token})
+    await ejecutor.confirmar(token)
+    _, es_error = await ejecutor.confirmar(token)
 
     assert es_error is True
     assert ejecutadas == ["peligrosa:1"]  # una sola vez
@@ -169,10 +183,8 @@ async def test_herramienta_desconocida(entorno) -> None:
 async def test_las_acciones_quedan_auditadas(entorno) -> None:
     ejecutor, _, store = entorno
     store.nuevo_turno("telegram:123")
-    aviso, _ = await ejecutor.ejecutar("peligrosa", {"valor": 5})
-    token = aviso.split("token:", 1)[1].split("\n", 1)[0].strip()
-    store.nuevo_turno("telegram:123")
-    await ejecutor.ejecutar(TOOL_CONFIRMAR, {"token": token})
+    await ejecutor.ejecutar("peligrosa", {"valor": 5})
+    await ejecutor.confirmar(_token_de(store))
 
     registros = store.auditoria(10)
     herramientas = [r["herramienta"] for r in registros]
@@ -186,34 +198,13 @@ async def test_las_lecturas_no_llenan_la_auditoria(entorno) -> None:
     assert store.auditoria(10) == []
 
 
-async def test_no_se_puede_autoconfirmar_en_el_mismo_turno(entorno) -> None:
-    """La garantia clave: sin un turno humano por medio, el token no vale.
-
-    Antes esto solo lo impedia una instruccion del prompt, asi que bastaba una
-    inyeccion en cualquier texto que llegase al contexto del modelo (el nombre
-    de un equipo en la red, el titulo de una emisora) para que propusiera y
-    confirmara una accion fisica sin que nadie dijera nada.
-    """
-    ejecutor, ejecutadas, store = entorno
-    store.nuevo_turno("telegram:123")
-
-    aviso, _ = await ejecutor.ejecutar("peligrosa", {"valor": 9})
-    token = aviso.split("token:", 1)[1].split("\n", 1)[0].strip()
-
-    resultado, es_error = await ejecutor.ejecutar(TOOL_CONFIRMAR, {"token": token})
-
-    assert es_error is True
-    assert "mismo turno" in resultado
-    assert ejecutadas == []  # lo importante: no se ha tocado nada
-
-
 async def test_el_token_no_se_escribe_en_la_auditoria(entorno) -> None:
     """La auditoria la puede leer una herramienta de solo lectura y un
     endpoint HTTP; el token es la credencial que autoriza la accion."""
     ejecutor, _, store = entorno
     store.nuevo_turno("telegram:123")
-    aviso, _ = await ejecutor.ejecutar("peligrosa", {"valor": 3})
-    token = aviso.split("token:", 1)[1].split("\n", 1)[0].strip()
+    await ejecutor.ejecutar("peligrosa", {"valor": 3})
+    token = _token_de(store)
 
     for registro in store.auditoria(10):
         assert token not in registro["resultado"]
@@ -260,7 +251,7 @@ async def test_el_boton_ejecuta_la_accion_propuesta(
     await ejecutor.ejecutar("peligrosa", {"valor": 42})
     token = store.pendientes_de(ctx.conversacion)[0]["token"]
 
-    resultado, es_error = await ejecutor.confirmar_fuera_de_banda(token)
+    resultado, es_error = await ejecutor.confirmar(token)
 
     assert es_error is False
     assert resultado == {"hecho": 42}
@@ -279,8 +270,8 @@ async def test_el_boton_tampoco_sirve_dos_veces(
     await ejecutor.ejecutar("peligrosa", {"valor": 1})
     token = store.pendientes_de(ctx.conversacion)[0]["token"]
 
-    await ejecutor.confirmar_fuera_de_banda(token)
-    _, es_error = await ejecutor.confirmar_fuera_de_banda(token)
+    await ejecutor.confirmar(token)
+    _, es_error = await ejecutor.confirmar(token)
 
     assert es_error is True
     assert ejecutadas == ["peligrosa:1"]
@@ -293,7 +284,7 @@ async def test_un_token_inventado_en_el_boton_no_ejecuta_nada(
     ctx = _contexto(settings, store, inventario)
     ejecutor = Ejecutor(_registro(ejecutadas), ctx)
 
-    resultado, es_error = await ejecutor.confirmar_fuera_de_banda("inventado")
+    resultado, es_error = await ejecutor.confirmar("inventado")
 
     assert es_error is True
     assert "no existe" in resultado

@@ -13,12 +13,12 @@ from typing import Any
 import pytest
 
 from casa_ai.agent.registry import Contexto, Herramienta, Registro, Riesgo, esquema
-from casa_ai.agent.safety import TOOL_CONFIRMAR, Ejecutor
+from casa_ai.agent.safety import Ejecutor
 from casa_ai.automations.rutinas import SIN_NOVEDAD, Rutinas
 from casa_ai.settings import Inventario, Settings
 from casa_ai.store import Store
 
-from .dobles import AplicacionFalsa, contexto, herramienta_confirmar, token_del_aviso
+from .dobles import AplicacionFalsa, contexto
 
 
 def app_falsa(settings: Settings, respuesta: str = "todo bien") -> Any:
@@ -63,20 +63,22 @@ async def test_una_rutina_no_puede_ejecutar_una_accion_de_riesgo(
             riesgo=Riesgo.ALTO, handler=peligrosa,
             resumen_confirmacion=lambda a: "algo gordo",
         ),
-        herramienta_confirmar(),
     )
     ctx = contexto(
         settings, inventario, store, por_defecto=True,
         canal="rutina", usuario="programada", conversacion="rutina:vigilancia",
+        confirmacion="imposible",
     )
     ejecutor = Ejecutor(registro, ctx)
     store.nuevo_turno("rutina:vigilancia")
 
     aviso, _ = await ejecutor.ejecutar("peligrosa", {})
-    token = token_del_aviso(aviso)
 
-    # En el mismo turno no puede, que es lo que pasaria dentro de una rutina.
-    _, es_error = await ejecutor.ejecutar(TOOL_CONFIRMAR, {"token": token})
+    # Declarado imposible: ni pendiente ni token, y ninguna herramienta con la
+    # que el modelo pudiera confirmar aunque quisiera.
+    assert "NO HAY NADIE" in aviso
+    assert store.pendientes_de("rutina:vigilancia") == []
+    _, es_error = await ejecutor.ejecutar("ejecutar_accion_pendiente", {"token": "x"})
     assert es_error is True
     assert ejecutadas == []
 
@@ -259,6 +261,5 @@ async def test_una_rutina_no_ve_la_herramienta_de_confirmacion(
         )
         return {h.nombre for h in registro.disponibles(ctx)}
 
-    assert TOOL_CONFIRMAR in nombres("en_banda")
-    assert TOOL_CONFIRMAR not in nombres("boton")
-    assert TOOL_CONFIRMAR not in nombres("imposible")
+    for confirmacion in ("en_banda", "boton", "imposible"):
+        assert "ejecutar_accion_pendiente" not in nombres(confirmacion)

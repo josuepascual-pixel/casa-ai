@@ -17,11 +17,10 @@ import pytest
 
 from casa_ai.agent.orchestrator import Agente
 from casa_ai.agent.registry import Contexto, Herramienta, Registro, Riesgo, esquema
-from casa_ai.agent.safety import TOOL_CONFIRMAR
 from casa_ai.settings import Inventario, Settings
 from casa_ai.store import Store
 
-from .dobles import contexto, herramienta_confirmar
+from .dobles import contexto
 
 # --- Dobles de los objetos de la API ----------------------------------------
 
@@ -100,7 +99,6 @@ def piezas(settings: Settings, store: Store, inventario: Inventario):
             handler=forzar,
             resumen_confirmacion=lambda a: f"Forzar carga a {a['potencia_w']} W",
         ),
-        herramienta_confirmar(),
     )
     return registro, ctx, ejecutadas
 
@@ -160,13 +158,14 @@ async def test_varias_herramientas_en_un_solo_mensaje(settings: Settings, piezas
     await agente.cerrar()
 
 
-async def test_accion_de_riesgo_no_se_ejecuta_hasta_confirmar(
+async def test_accion_de_riesgo_no_se_ejecuta_y_el_token_no_viaja(
     settings: Settings, piezas
 ) -> None:
+    """El modelo propone, el sistema le pide que pida un si, y nada mas: el
+    token no aparece en el contexto. La confirmacion la resuelve
+    `Aplicacion.responder` con el mensaje siguiente (test_confirmacion_en_banda)."""
     registro, ctx, ejecutadas = piezas
-
-    # Turno 1: el modelo intenta la accion y el sistema le pide confirmacion.
-    api1 = ApiFalsa(
+    api = ApiFalsa(
         guion=[
             RespuestaFalsa(
                 [BloqueHerramienta("forzar", {"potencia_w": 3000})], stop_reason="tool_use"
@@ -174,36 +173,16 @@ async def test_accion_de_riesgo_no_se_ejecuta_hasta_confirmar(
             RespuestaFalsa([BloqueTexto("Voy a forzar la carga a 3000 W. Confirmas?")]),
         ]
     )
-    agente1 = _agente(settings, registro, ctx, api1)
-    respuesta1 = await agente1.responder("c3", "carga la bateria a 3000")
+    agente = _agente(settings, registro, ctx, api)
+    respuesta = await agente.responder("c3", "carga la bateria a 3000")
 
     assert ejecutadas == []  # nada ha pasado todavia
-    assert "Confirmas" in respuesta1
-
-    # El token viaja al modelo dentro del tool_result del turno 1.
-    resultado = api1.peticiones[1]["messages"][-1]["content"][0]["content"]
-    token = resultado.split("token:", 1)[1].split("\n", 1)[0].strip()
-    await agente1.cerrar()
-
-    # Turno 2: el usuario dice "si" y el modelo consume el token.
-    api2 = ApiFalsa(
-        guion=[
-            RespuestaFalsa(
-                [BloqueHerramienta(TOOL_CONFIRMAR, {"token": token}, id="tu_2")],
-                stop_reason="tool_use",
-            ),
-            RespuestaFalsa([BloqueTexto("Hecho: cargando a 3000 W.")]),
-        ]
-    )
-    agente2 = _agente(settings, registro, ctx, api2)
-    respuesta2 = await agente2.responder("c3", "si, confirmo")
-
-    assert ejecutadas == ["forzar:3000"]  # ahora si
-    assert "Hecho" in respuesta2
-
-    # El historial del turno 2 arrastra el turno 1: el modelo tiene contexto.
-    assert len(api2.peticiones[0]["messages"]) > 1
-    await agente2.cerrar()
+    assert "Confirmas" in respuesta
+    resultado = api.peticiones[1]["messages"][-1]["content"][0]["content"]
+    pendientes = ctx.store.pendientes_de("c3")
+    assert len(pendientes) == 1 and pendientes[0]["token"] not in resultado
+    assert "token" not in resultado.lower()
+    await agente.cerrar()
 
 
 async def test_rechazo_del_clasificador_se_maneja(settings: Settings, piezas) -> None:
@@ -320,10 +299,14 @@ async def test_el_modelo_no_puede_autoconfirmar_dentro_del_mismo_turno(
                     stop_reason="tool_use",
                 )
             if self.vuelta == 2:
-                texto = params["messages"][-1]["content"][0]["content"]
-                self.token = texto.split("token:", 1)[1].split("\n", 1)[0].strip()
+                # La inyeccion le dice que confirme. No tiene token (no viaja)
+                # y la herramienta ya no existe: prueba con el de la base de
+                # datos, que es lo peor que podria pasar.
+                self.token = ctx.store.pendientes_de(ctx.conversacion)[0]["token"]
                 return RespuestaFalsa(
-                    [BloqueHerramienta(TOOL_CONFIRMAR, {"token": self.token}, id="p2")],
+                    [BloqueHerramienta(
+                        "ejecutar_accion_pendiente", {"token": self.token}, id="p2"
+                    )],
                     stop_reason="tool_use",
                 )
             return RespuestaFalsa([BloqueTexto("no he podido")])
@@ -336,7 +319,8 @@ async def test_el_modelo_no_puede_autoconfirmar_dentro_del_mismo_turno(
     assert ejecutadas == []  # la accion fisica no ha ocurrido
     ultimo = api.peticiones[-1]["messages"][-1]["content"][0]
     assert ultimo["is_error"] is True
-    assert "mismo turno" in ultimo["content"]
+    assert "No existe" in ultimo["content"]
+    assert len(ctx.store.pendientes_de(ctx.conversacion)) == 1  # sigue pendiente
     await agente.cerrar()
 
 

@@ -6,9 +6,10 @@ cosas, en este orden:
 1. Si la herramienta no existe, lo dice sin ejecutar nada.
 2. Si es de riesgo alto y la confirmacion esta activada, NO la ejecuta: crea
    una accion pendiente con un token y devuelve al modelo la instruccion de
-   pedir confirmacion al usuario. La accion solo se ejecuta cuando el usuario
-   confirma en un mensaje posterior y el modelo llama a
-   `ejecutar_accion_pendiente` con ese token.
+   pedir confirmacion al usuario. El token NUNCA entra en el contexto del
+   modelo: la accion solo se ejecuta cuando un humano la confirma, con el
+   boton del canal o escribiendo que si, y eso lo reconoce el codigo
+   (`Aplicacion.responder` y `afirmaciones.py`), no el modelo.
 3. Ejecuta el handler y captura los fallos como resultado de error, no como
    excepcion: el agente tiene que poder leer el error y reaccionar.
 4. Deja constancia en la auditoria de todo lo que se ejecuta.
@@ -27,10 +28,6 @@ from .registry import Contexto, Herramienta, Registro, Riesgo
 
 log = logging.getLogger(__name__)
 
-# Nombre reservado: es la herramienta que consuma una accion pendiente.
-TOOL_CONFIRMAR = "ejecutar_accion_pendiente"
-
-
 class Ejecutor:
     def __init__(self, registro: Registro, ctx: Contexto) -> None:
         self.registro = registro
@@ -46,9 +43,6 @@ class Ejecutor:
                 f"habla. Disponibles: {disponibles}.",
                 True,
             )
-
-        if nombre == TOOL_CONFIRMAR:
-            return await self._confirmar(argumentos)
 
         necesita_confirmacion = (
             herramienta.riesgo is Riesgo.ALTO and self.ctx.settings.exigir_confirmacion
@@ -107,12 +101,10 @@ class Ejecutor:
             resultado="propuesta, pendiente de confirmacion del usuario",
         )
         # El texto va dirigido al modelo, no al usuario: le dice exactamente
-        # que hacer a continuacion para no quedarse colgado ni reintentar.
+        # que hacer a continuacion para no quedarse colgado ni reintentar. En
+        # ningun caso lleva el token: una inyeccion de prompt no tiene con que
+        # trabajar, ni siquiera un token que reutilizar.
         if self.ctx.confirmacion_fuera_de_banda:
-            # El token no entra en el contexto del modelo. El canal se encarga:
-            # ofrece un boton y, al pulsarlo, llama al codigo de confirmacion
-            # directamente. Asi una inyeccion de prompt no tiene con que
-            # trabajar, ni siquiera un token que reutilizar.
             return (
                 "ACCION NO EJECUTADA - REQUIERE CONFIRMACION DEL USUARIO.\n"
                 f"Accion propuesta: {resumen}\n\n"
@@ -125,68 +117,46 @@ class Ejecutor:
                 False,
             )
 
+        # En banda (API, terminal, satelite de voz): el «si» lo reconoce el
+        # codigo cuando llegue el mensaje siguiente. Al modelo solo le toca
+        # pedirlo bien.
+        del token
         return (
             "ACCION NO EJECUTADA - REQUIERE CONFIRMACION DEL USUARIO.\n"
-            f"Accion propuesta: {resumen}\n"
-            f"token: {token}\n\n"
-            "Explica al usuario en una frase que vas a hacer y pidele que lo "
-            "confirme. NO vuelvas a llamar a esta herramienta. Cuando el usuario "
-            f"confirme, llama a {TOOL_CONFIRMAR} con este token. Si dice que no, "
-            "no llames a nada y confirmale que lo has cancelado.",
+            f"Accion propuesta: {resumen}\n\n"
+            "Explica al usuario en una frase que vas a hacer y que consecuencia "
+            "tiene, y pidele que responda solo «si» para confirmar o «no» para "
+            "cancelar. El sistema reconoce esa respuesta por su cuenta: TU no "
+            "tienes que hacer nada mas, y NO vuelvas a llamar a esta herramienta.",
             False,
         )
 
-    async def _tomar_y_ejecutar(
-        self, token: str, *, exige_turno_nuevo: bool, via: str, si_no_vale: str
-    ) -> tuple[Any, bool]:
-        """El cuerpo comun de las dos confirmaciones.
+    async def confirmar(self, token: str) -> tuple[Any, bool]:
+        """Ejecuta una accion pendiente porque un humano la confirmo.
 
-        `exige_turno_nuevo` es el unico bit que de verdad cambia entre ellas, y
-        las dos entradas publicas siguen existiendo porque son dos llamantes
-        distintos: el modelo y el canal.
+        Lo llama el canal (pulsacion de boton) o `Aplicacion.responder` (un
+        «si» escrito, reconocido en codigo). Nunca el modelo: no existe
+        herramienta para ello, asi que una inyeccion no tiene a que apuntar.
+        Por eso no exige turno nuevo: el propio acto de confirmar es la prueba
+        de que hablo un humano, que es lo que el guardia de turno del store
+        intentaba establecer. Canal, usuario, conversacion, un solo uso y
+        caducidad se siguen comprobando.
         """
         pendiente, motivo = self.ctx.store.tomar_pendiente(
             token,
             canal=self.ctx.canal,
             usuario=self.ctx.usuario,
             conversacion=self.ctx.conversacion,
-            exige_turno_nuevo=exige_turno_nuevo,
+            exige_turno_nuevo=False,
         )
         if pendiente is None:
-            return si_no_vale.format(motivo=motivo), True
+            return f"No se puede ejecutar esa accion: {motivo}.", True
         herramienta = self.registro.get(pendiente["herramienta"])
         if herramienta is None:  # pragma: no cover - solo si cambia el codigo
             return (f"La herramienta '{pendiente['herramienta']}' ya no existe.", True)
-        log.info("Confirmada %s: %s (%s)", via, pendiente["resumen"], self.ctx.usuario)
+        log.info("Confirmada por un humano: %s (%s)", pendiente["resumen"], self.ctx.usuario)
         return await self._ejecutar_ya(
             herramienta, pendiente["argumentos"], confirmada=True
-        )
-
-    async def _confirmar(self, argumentos: dict[str, Any]) -> tuple[Any, bool]:
-        """La confirmacion que pide el modelo, con el token que se le dio."""
-        return await self._tomar_y_ejecutar(
-            str(argumentos.get("token", "")).strip(),
-            exige_turno_nuevo=True,
-            via="por el modelo",
-            si_no_vale=(
-                "No se puede ejecutar esa accion pendiente: {motivo}. "
-                "No reintentes con el mismo token. Si el usuario sigue queriendo "
-                "la accion, esperale y vuelve a proponerla desde el principio."
-            ),
-        )
-
-    async def confirmar_fuera_de_banda(self, token: str) -> tuple[Any, bool]:
-        """Ejecuta una accion pendiente porque un humano pulso un boton.
-
-        Este camino no pasa por el modelo: lo llama el canal. Por eso no exige
-        un turno nuevo, la pulsacion es en si misma la prueba de que hablo un
-        humano, que es lo que el guardia de turno intenta establecer.
-        """
-        return await self._tomar_y_ejecutar(
-            token,
-            exige_turno_nuevo=False,
-            via="con boton",
-            si_no_vale="No se puede ejecutar esa accion: {motivo}.",
         )
 
     # --- Ejecucion real --------------------------------------------------

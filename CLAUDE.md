@@ -9,7 +9,7 @@ WhatsApp, texto o nota de voz.
 
 ```bash
 pip install -e ".[dev,voz]"                  # `voz` es opcional y pesada
-PYTHONPATH=src python -m pytest tests -q     # 473 tests, no tocan hardware
+PYTHONPATH=src python -m pytest tests -q     # 497 tests, no tocan hardware
 ruff check src tests                         # debe quedar limpio
 casa-ai                                      # backend + bot + rutinas
 
@@ -107,18 +107,19 @@ captura de verdad. Por eso «¿hay alguien en la puerta?» funciona.
 - **Riesgo ALTO no se ejecuta.** Crea una acción pendiente con token y exige
   confirmación en un mensaje posterior. Tokens de 128 bits, de un solo uso,
   caducan, y atados a canal + usuario + conversación.
-- **En Telegram y WhatsApp el token no pasa por el contexto del modelo.** El canal manda
-  botones y el token va en el `callback_data`; al pulsar, el canal llama al
-  código de confirmación directamente (`Aplicacion.confirmar_pendiente`). Ese
-  camino usa `exige_turno_nuevo=False` a propósito: la pulsación **es** la
-  prueba de que habló un humano. No se salta nada más — canal, usuario,
-  conversación, un solo uso y caducidad siguen comprobándose.
-- **La espera al humano está en el código, no en el prompt.** El store cuenta
-  turnos humanos (no mensajes: los `tool_result` también son rol `user`) y una
-  acción propuesta en el turno N solo se confirma en el N+1. Sin esto, una
-  inyección en cualquier texto que entre al contexto —hostname de un equipo en
-  la red, título de una emisora— podía hacer que el modelo se autoconfirmase.
-  **No relajes esto.**
+- **El token nunca pasa por el contexto del modelo, en ningún canal, y el
+  modelo no tiene ninguna herramienta para confirmar.** En Telegram y WhatsApp
+  el canal manda botones y el token va en el `callback_data`; al pulsar, el
+  canal llama al código de confirmación directamente
+  (`Aplicacion.confirmar_pendiente`). En los canales sin botones (API,
+  terminal, satélite de voz) el «sí» lo reconoce **el código**
+  (`afirmaciones.py`, desde `Aplicacion.responder`): un sí claro ejecuta, un no
+  claro cancela, y cualquier otro mensaje cancela la propuesta y sigue. Antes el
+  modelo recibía el token y llamaba a `ejecutar_accion_pendiente`; la garantía
+  era «pasó un turno humano», no «el humano dijo que sí», y una inyección en el
+  turno siguiente podía confirmar. Canal, usuario, conversación, un solo uso y
+  caducidad se comprueban siempre en `Store.tomar_pendiente`. **No relajes
+  esto.**
 - **El token no se escribe en la auditoría**: la lee una herramienta de solo
   lectura y un endpoint HTTP.
 - **Todo endpoint HTTP exige `API_TOKEN`** y la identidad del canal es fija,

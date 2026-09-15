@@ -14,6 +14,7 @@ from .adapters.knx_onna import KNXOnna
 from .adapters.planta import OUI_SUNGROW, PlantaSungrow
 from .adapters.sungrow import Sungrow
 from .adapters.unifi import UniFi
+from .afirmaciones import es_afirmacion, es_negacion
 from .agent.orchestrator import Agente, crear_cliente
 from .agent.registry import Confirmacion, Contexto, Registro
 from .channels.comun import CANCELAR, decodificar
@@ -218,27 +219,74 @@ class Aplicacion:
         que hay al otro lado, y "imposible" es una respuesta valida: la usan las
         rutinas, donde no hay nadie.
         """
+        if confirmacion == "en_banda" and isinstance(entrada, str):
+            resuelto = await self._resolver_en_banda(canal, usuario, conversacion, entrada)
+            if resuelto is not None:
+                return resuelto
         ctx = self.contexto_para(
             canal, usuario, conversacion, confirmacion=confirmacion
         )
         agente = Agente(self.settings, self.registro, ctx, self.cliente)
         return await agente.responder(conversacion, entrada)  # type: ignore[arg-type]
 
+    async def _resolver_en_banda(
+        self, canal: str, usuario: str, conversacion: str, texto: str
+    ) -> str | None:
+        """Si hay una accion propuesta en el turno anterior, este mensaje decide.
+
+        Un «si» claro la ejecuta; un «no» claro la cancela; cualquier otra
+        cosa la cancela tambien y sigue con el modelo. Devuelve la respuesta
+        al usuario cuando la decision se toma aqui, y None cuando el mensaje
+        tiene que ir al modelo. El modelo no interviene en la decision: es lo
+        que impide que una inyeccion en el turno siguiente confirme nada.
+        """
+        pendientes = self.store.pendientes_de(
+            conversacion, turno=self.store.turno_actual(conversacion)
+        )
+        if not pendientes:
+            return None
+        if es_afirmacion(texto):
+            if len(pendientes) > 1:
+                self.store.cancelar_pendientes(conversacion)
+                self._anotar_en_historial(
+                    conversacion, "[Habia varias acciones pendientes: cancelada todas.]"
+                )
+                return (
+                    "Habia varias acciones pendientes y no se cual confirmas. Las he "
+                    "cancelado: pidemela otra vez, de una en una."
+                )
+            detalle, _es_error = await self.confirmar_pendiente(
+                canal=canal, usuario=usuario, conversacion=conversacion,
+                token=pendientes[0]["token"],
+            )
+            return detalle
+        self.store.cancelar_pendientes(conversacion)
+        resumenes = "; ".join(p["resumen"] for p in pendientes)
+        if es_negacion(texto):
+            self._anotar_en_historial(conversacion, f"[El usuario cancelo: {resumenes}.]")
+            return "Cancelado."
+        # No fue ni si ni no: la propuesta cae, y el modelo se entera para que
+        # no la de por viva ni la ejecute por su cuenta.
+        self._anotar_en_historial(
+            conversacion,
+            f"[La propuesta pendiente ({resumenes}) quedo cancelada: el usuario no la "
+            "confirmo. Si la sigue queriendo, proponla de nuevo.]",
+        )
+        return None
+
     async def confirmar_pendiente(
         self, *, canal: str, usuario: str, conversacion: str, token: str
     ) -> tuple[str, bool]:
         """Ejecuta una accion pendiente porque un humano la confirmo.
 
-        La llama el canal cuando el usuario pulsa el boton, no el modelo. Ese
-        es el punto: el token nunca entra en el contexto del agente.
+        La llama el canal cuando el usuario pulsa el boton, o `_resolver_en_banda`
+        cuando escribe que si. Nunca el modelo: el token no entra en su contexto.
         """
         from .agent.safety import Ejecutor
 
         propuesta = self.store.detalle_pendiente(token)
         ctx = self.contexto_para(canal, usuario, conversacion)
-        resultado, es_error = await Ejecutor(self.registro, ctx).confirmar_fuera_de_banda(
-            token
-        )
+        resultado, es_error = await Ejecutor(self.registro, ctx).confirmar(token)
         if es_error:
             return str(resultado), True
 

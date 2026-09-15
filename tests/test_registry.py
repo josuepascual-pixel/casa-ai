@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from casa_ai.agent.registry import Contexto, Cualquiera, Riesgo, Todos, esquema
-from casa_ai.agent.safety import TOOL_CONFIRMAR
 from casa_ai.settings import Inventario, Settings
 from casa_ai.store import Store
 from casa_ai.tools import construir_registro
@@ -108,7 +107,6 @@ def test_lo_no_configurado_no_se_ofrece_al_modelo(
     assert "casa_accion" in nombres
     assert "musica_control" in nombres
     assert "informe_casa" in nombres
-    assert TOOL_CONFIRMAR in nombres
 
 
 def test_las_camaras_desaparecen_sin_unifi_ni_ha(
