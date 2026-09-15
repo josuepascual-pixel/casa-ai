@@ -569,8 +569,15 @@ class Settings(BaseSettings):
                 "Limitalo con API_CLIENTES (p. ej. 127.0.0.0/8,172.30.32.2/32) para "
                 "que solo entre por Home Assistant."
             )
+        personas = self.cargar_inventario().personas
+        if self.api_confiar_en_ingress and not personas:
+            avisos.append(
+                "El panel entra por Home Assistant y no hay ninguna persona declarada "
+                "en `personas:`: cualquier usuario de HA (tambien el del nino) veria y "
+                "podria pedir todo. Declara a cada uno con su `usuario-<id de HA>`."
+            )
         chats = self.chats_telegram
-        if chats and not self.cargar_inventario().personas:
+        if chats and not personas:
             if any(chat < 0 for chat in chats):
                 avisos.append(
                     "Hay un grupo de Telegram autorizado y ninguna persona declarada en "

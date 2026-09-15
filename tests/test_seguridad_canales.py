@@ -369,3 +369,10 @@ def test_avisa_si_el_api_esta_abierto_a_toda_la_red(settings: Settings) -> None:
     assert any("API_CLIENTES" in a for a in abierto.avisos_de_seguridad())
     cerrado = settings.model_copy(update={"api_host": "0.0.0.0", "api_clientes": "127.0.0.0/8"})
     assert not any("API_CLIENTES" in a for a in cerrado.avisos_de_seguridad())
+
+
+def test_ingress_sin_personas_avisa(settings: Settings) -> None:
+    """Sin `personas:` cualquier usuario de HA entraria al panel como dueno."""
+    abierto = settings.model_copy(update={"api_confiar_en_ingress": True})
+    assert any("usuario-<id de HA>" in a for a in abierto.avisos_de_seguridad())
+    assert not any("usuario-<id de HA>" in a for a in settings.avisos_de_seguridad())

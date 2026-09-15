@@ -215,12 +215,13 @@ def crear_app() -> FastAPI:
     autenticar = _autenticador(settings)
 
     async def solo_token(quien: Identidad = Depends(autenticar)) -> Identidad:  # noqa: B008
-        """Las rutas que no son el panel exigen el token, ingress o no.
+        """Las rutas que no son el panel (ni su chat) exigen el token.
 
         El Supervisor reenvia por el ingress CUALQUIER ruta del complemento a
         cualquier sesion de Home Assistant, incluida la de la tablet del nino.
-        Si /chat o /voz aceptasen esa identidad, el nino hablaria con Jarvis
-        como dueno (o como el aparato que el quisiera nombrar).
+        /voz acepta un aparato en el cuerpo y las rutas administrativas son de
+        dueno: por el ingress serian del nino. El panel y /chat si sirven por
+        el ingress, porque alli la identidad es el usuario de HA con su nivel.
         """
         if quien.canal != "http":
             raise HTTPException(
@@ -301,21 +302,28 @@ def crear_app() -> FastAPI:
     async def salud() -> dict[str, Any]:
         return {"estado": "ok", "subsistemas": aplicacion.resumen_configuracion()}
 
-    @api.post("/chat", response_model=RespuestaChat,
-              dependencies=[Depends(solo_token)])
-    async def chat(peticion: PeticionChat) -> RespuestaChat:
-        """Chat por HTTP, autenticado con API_TOKEN.
+    @api.post("/chat", response_model=RespuestaChat)
+    async def chat(
+        peticion: PeticionChat, quien: Identidad = Depends(autenticar),  # noqa: B008
+    ) -> RespuestaChat:
+        """Chat por HTTP: con API_TOKEN, o desde el panel por el ingress.
 
-        La identidad es siempre `api`, no la que diga el cuerpo de la peticion,
-        y el hilo va con prefijo `http:`. Asi este canal no puede hacerse pasar
-        por un chat de Telegram ni leer su historial.
+        La identidad nunca la dice el cuerpo de la peticion: con el token es
+        `api` y el hilo va con prefijo `http:`; por el ingress es el usuario
+        de Home Assistant que hizo login, con su nivel, y su hilo es suyo (el
+        `hilo` del cuerpo se ignora). Asi este canal no puede hacerse pasar
+        por un chat de Telegram ni leer el historial de otro.
         """
         if not api_key_presente():
             raise HTTPException(503, "Sin credenciales de Anthropic configuradas.")
+        if quien.canal == "http":
+            conversacion = f"http:{peticion.hilo}"
+        else:
+            conversacion = f"{quien.canal}:{quien.usuario}"
         respuesta = await aplicacion.responder(
-            canal="http",
-            usuario=USUARIO_HTTP,
-            conversacion=f"http:{peticion.hilo}",
+            canal=quien.canal,
+            usuario=quien.usuario,
+            conversacion=conversacion,
             entrada=peticion.mensaje,
         )
         return RespuestaChat(respuesta=respuesta)

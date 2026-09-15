@@ -243,10 +243,11 @@ Honestamente:
   Assistant (ingress, tras su login) y ningún equipo de la casa llega al
   puerto aunque tenga el token. uvicorn arranca sin `proxy_headers`: una
   cabecera `X-Forwarded-For` desde el propio equipo no cambia el origen.
-  Por el ingress solo se sirve el panel: `/chat`, `/voz` y las rutas
-  administrativas exigen el token aunque lleguen del Supervisor, porque el
-  ingress reenvía cualquier ruta a cualquier sesión de Home Assistant,
-  también a la de la tablet del niño. Por el ingress no hace falta token:
+  Por el ingress solo se sirven el panel y su chat, y en ambos la identidad
+  es el usuario de HA con su nivel; `/voz` y las rutas administrativas
+  exigen el token aunque lleguen del Supervisor, porque el ingress reenvía
+  cualquier ruta a cualquier sesión de Home Assistant, también a la de la
+  tablet del niño. Por el ingress no hace falta token:
   la petición llega del
   Supervisor (su IP, no una cabecera que cualquiera pueda poner) con el
   usuario de HA que hizo login, y ese usuario es la persona: en la tablet

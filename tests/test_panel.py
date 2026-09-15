@@ -234,6 +234,7 @@ def test_el_panel_entra_solo_si_el_backend_no_pide_token() -> None:
     js = (carpeta / "panel.js").read_text("utf-8")
     assert "if (token()) cabeceras.Authorization" in js
     assert 'pedir("salud")' in js and 'pedir("/salud")' not in js
+    assert 'pedir("chat"' in js and 'pedir("/chat"' not in js  # relativo: ingress
     assert "\nentrar();" in js
 
 
@@ -247,8 +248,6 @@ def test_por_el_ingress_solo_se_sirve_el_panel(monkeypatch, tmp_path: Path) -> N
         API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="true", CONFIG_PATH=_config_con_personas(tmp_path),
     ) as c:
         assert c.get("/api/panel", headers=cabeceras).status_code == 200
-        r = c.post("/chat", json={"mensaje": "fuerza la bateria"}, headers=cabeceras)
-        assert r.status_code == 403
         r = c.post("/voz", json={"dispositivo": "usuario-papa", "texto": "abre"},
                    headers=cabeceras)
         assert r.status_code == 403
@@ -290,3 +289,34 @@ def test_uvicorn_no_se_cree_x_forwarded_for(monkeypatch) -> None:
     finally:
         get_settings.cache_clear()
     assert llamadas[0]["proxy_headers"] is False
+
+
+def test_el_chat_del_panel_habla_como_el_usuario_de_home_assistant(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Por el ingress /chat no es `api` (dueno): es quien hizo login en HA,
+    con su nivel, y su hilo es suyo aunque el cuerpo diga otro."""
+    from casa_ai.app import Aplicacion
+
+    turnos: list[dict] = []
+
+    async def responder_falso(self, **kwargs):
+        turnos.append(kwargs)
+        return "ok"
+
+    monkeypatch.setattr(Aplicacion, "responder", responder_falso)
+    with app_de_prueba(
+        monkeypatch, tmp_path, cliente_ip="172.30.32.2",
+        API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="true", ANTHROPIC_API_KEY="sk-test",
+        CONFIG_PATH=_config_con_personas(tmp_path),
+    ) as c:
+        r = c.post("/chat", json={"mensaje": "hola", "hilo": "telegram:555"},
+                   headers={**INGRESS, "X-Remote-User-Id": "peque"})
+        assert r.status_code == 200
+        assert turnos[-1]["canal"] == "panel" and turnos[-1]["usuario"] == "usuario-peque"
+        assert turnos[-1]["conversacion"] == "panel:usuario-peque"
+
+        r = c.post("/chat", json={"mensaje": "hola"},
+                   headers={"Authorization": f"Bearer {TOKEN}"})
+        assert r.status_code == 200
+        assert turnos[-1]["canal"] == "http" and turnos[-1]["conversacion"] == "http:default"

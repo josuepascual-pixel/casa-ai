@@ -433,7 +433,7 @@ $("enviar").addEventListener("click", async () => {
   if (!mensaje) return;
   $("respuesta").textContent = "Pensando…";
   try {
-    const r = await pedir("/chat", {
+    const r = await pedir("chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mensaje, hilo: "panel" }),
