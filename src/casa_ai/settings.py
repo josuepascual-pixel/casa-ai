@@ -230,6 +230,10 @@ class Persona(BaseModel):
     whatsapp: list[str] = Field(default_factory=list)
     # Identidades del canal de voz (un satelite en su cuarto), cuando exista.
     dispositivos: list[str] = Field(default_factory=list)
+    # Entidades de Home Assistant que solo existen para esta persona: su peso,
+    # su composicion corporal. Para todos los demas, incluido el dueno, el
+    # informe de la manana y cualquier altavoz, no estan.
+    privadas: list[str] = Field(default_factory=list)
 
     def responde_a(self, canal: str, usuario: str) -> bool:
         identidades = {
@@ -300,6 +304,18 @@ class Inventario(BaseModel):
         if not self.personas:
             return None
         return Persona(nombre="alguien sin registrar", nivel="nino")
+
+    def privadas_ajenas(self, persona: Persona | None) -> frozenset[str]:
+        """Las entidades privadas que quien habla NO debe ver.
+
+        Todas las de los demas. Y si quien habla no es una persona declarada
+        (una rutina, el API, un chat sin registrar), todas: el dueno del token
+        del API no es dueno del peso de nadie.
+        """
+        return frozenset(
+            e for p in self.personas for e in p.privadas
+            if persona is None or p.nombre != persona.nombre or p.nivel != persona.nivel
+        )
 
     def resolver_alias(self, referencia: str) -> str:
         """Un alias en lenguaje natural a entity_id, si esta declarado.

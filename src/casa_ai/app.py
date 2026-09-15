@@ -170,11 +170,15 @@ class Aplicacion:
         import dataclasses
 
         persona = self.inventario.persona_de(canal, usuario)
-        # Un nino recibe Home Assistant restringido a sus dominios: el veto
-        # esta en el adaptador para que ninguna herramienta pueda saltarselo.
+        # El veto esta en el adaptador para que ninguna herramienta pueda
+        # saltarselo: un nino ve solo sus dominios, y nadie ve las entidades
+        # privadas de otra persona (ni el informe, ni el API, ni un altavoz).
         ha = self.ctx.ha
+        ocultas = self.inventario.privadas_ajenas(persona)
         if persona is not None and persona.es_nino:
-            ha = ha.restringido_a(DOMINIOS_PARA_NINOS)
+            ha = ha.restringido_a(DOMINIOS_PARA_NINOS, ocultas=ocultas)
+        elif ocultas:
+            ha = ha.restringido_a(ocultas=ocultas)
         return dataclasses.replace(
             self.ctx,
             canal=canal,

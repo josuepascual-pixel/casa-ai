@@ -133,3 +133,57 @@ async def test_la_vista_restringida_no_toca_ni_mira_fuera_de_su_lista(settings) 
     assert (await vista.estado("light.leo"))["entity_id"] == "light.leo"
     await vista.llamar_servicio("light", "turn_on", {"entity_id": "light.leo"})
     assert encendidos.called
+
+
+# --- Entidades privadas -----------------------------------------------------
+
+CON_PRIVADAS = {
+    "personas": [
+        {"nombre": "Josue", "nivel": "dueno", "telegram": ["1"],
+         "privadas": ["input_number.peso_josue"]},
+        {"nombre": "Ana", "nivel": "adulto", "telegram": ["2"],
+         "privadas": ["input_number.peso_ana"]},
+        {"nombre": "Leo", "nivel": "nino", "dispositivos": ["satelite-leo"]},
+    ]
+}
+
+
+def test_las_privadas_de_los_demas_no_existen_para_nadie_mas() -> None:
+    inv = Inventario.model_validate(CON_PRIVADAS)
+    josue = inv.persona_de("telegram", "1")
+    assert inv.privadas_ajenas(josue) == {"input_number.peso_ana"}
+    assert inv.privadas_ajenas(inv.persona_de("telegram", "2")) == {"input_number.peso_josue"}
+    # Una rutina, el API, un chat sin registrar: todas. El token del API no es
+    # dueno del peso de nadie.
+    for canal, usuario in (("rutina", "programada"), ("http", "api"), ("telegram", "999")):
+        assert inv.privadas_ajenas(inv.persona_de(canal, usuario)) == {
+            "input_number.peso_ana", "input_number.peso_josue",
+        }
+    assert Inventario().privadas_ajenas(None) == frozenset()
+
+
+@respx.mock
+async def test_la_vista_oculta_lo_privado_como_si_no_existiera(settings, store) -> None:
+    from casa_ai.adapters.homeassistant import HomeAssistant
+    from casa_ai.app import Aplicacion
+
+    estados_ha(entidad("input_number.peso_josue", "82.4"), entidad("input_number.peso_ana", "61.0"),
+               entidad("light.salon"))
+    app = Aplicacion.__new__(Aplicacion)
+    app.inventario = Inventario.model_validate(CON_PRIVADAS)
+    app.ctx = contexto(settings, app.inventario, store, ha=HomeAssistant(settings))
+
+    ana = app.contexto_para("telegram", "2", "telegram:2")
+    vistas = [e["entity_id"] for e in await ana.ha.estados()]
+    assert "input_number.peso_ana" in vistas and "input_number.peso_josue" not in vistas
+    assert [e["entity_id"] for e in await ana.ha.buscar_entidades(texto="peso")] == [
+        "input_number.peso_ana"
+    ]
+    # Y no se dice que es privada: el mensaje es el de una entidad que no existe.
+    with pytest.raises(AdapterError, match="No hay ninguna entidad"):
+        await ana.ha.estado("input_number.peso_josue")
+    # Un adulto sigue viendo todo lo demas, sin la restriccion de dominios.
+    assert (await ana.ha.estado("light.salon"))["entity_id"] == "light.salon"
+
+    informe = app.contexto_para("rutina", "programada", "rutina:informe")
+    assert not [e for e in await informe.ha.estados() if "peso" in e["entity_id"]]

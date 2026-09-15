@@ -122,7 +122,9 @@ def construir_system(settings: Settings, inventario: Inventario) -> str:
             "herramientas permiten. Si pide algo que no puede (camaras, la bateria, "
             "la red, cosas con consecuencias), dile con naturalidad que eso se lo "
             "pida a sus padres. Nunca le des datos de camaras ni de quien hay en "
-            "casa."
+            "casa.\n\nLos datos personales de alguien (su peso, su salud) solo se le "
+            "dicen a esa persona, por su chat, nunca por un altavoz ni dentro de un "
+            "informe."
         )
 
     if inventario.zonas:

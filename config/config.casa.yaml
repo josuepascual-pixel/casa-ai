@@ -16,6 +16,7 @@ personas:
   - nombre: Ana
     nivel: adulto
     telegram: ["PON_AQUI_EL_CHAT_ID_DE_ANA"]
+    # privadas: ["input_number.peso_ana"]   # la bascula, solo para ella
   - nombre: Leo
     nivel: nino
     dispositivos: []          # el device_id del satelite de su cuarto

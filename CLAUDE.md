@@ -9,7 +9,7 @@ WhatsApp, texto o nota de voz.
 
 ```bash
 pip install -e ".[dev,voz]"                  # `voz` es opcional y pesada
-PYTHONPATH=src python -m pytest tests -q     # 501 tests, no tocan hardware
+PYTHONPATH=src python -m pytest tests -q     # 503 tests, no tocan hardware
 ruff check src tests                         # debe quedar limpio
 casa-ai                                      # backend + bot + rutinas
 
@@ -156,10 +156,12 @@ captura de verdad. Por eso «¿hay alguien en la puerta?» funciona.
   esté marcado `para_ninos` (ninguna de riesgo alto puede estarlo; hay un
   test). `Registro.disponible()` lo vuelve a comprobar en el Ejecutor, y el
   niño recibe Home Assistant **restringido** a sus dominios en el propio
-  adaptador, para que ninguna herramienta pueda saltárselo. Quien no está
-  declarado es lo que su canal diga en `NIVEL_SIN_DECLARAR`: dueño para
-  `cli`, `http` y `rutina`, niño para `voz`, y en los chats niño si hay
-  personas declaradas.
+  adaptador, para que ninguna herramienta pueda saltárselo. Las entidades
+  `privadas` de una persona (su peso) las oculta esa misma vista a todos los
+  demás, incluido el dueño y las rutinas, con el mensaje de una entidad
+  inexistente. Quien no está declarado es lo que su canal diga en
+  `NIVEL_SIN_DECLARAR`: dueño para `cli`, `http` y `rutina`, niño para `voz`,
+  y en los chats niño si hay personas declaradas.
 
 ## Añadir cosas
 

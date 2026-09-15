@@ -102,12 +102,30 @@ class HomeAssistantRestringido:
     para ninos volveria a tener que acordarse. Aqui se acuerda el mecanismo.
     """
 
-    def __init__(self, ha: HomeAssistant, dominios: frozenset[str]) -> None:
+    def __init__(
+        self,
+        ha: HomeAssistant,
+        dominios: frozenset[str] | None = None,
+        ocultas: frozenset[str] = frozenset(),
+    ) -> None:
         self._ha = ha
+        # None = todos los dominios (un adulto al que solo se le ocultan las
+        # entidades privadas de los demas).
         self._dominios = dominios
+        self._ocultas = ocultas
+
+    def _permitida(self, entity_id: str) -> bool:
+        if entity_id in self._ocultas:
+            return False
+        return self._dominios is None or _dominio(entity_id) in self._dominios
 
     def _vetar(self, entity_id: str) -> None:
-        if _dominio(entity_id) not in self._dominios:
+        if entity_id in self._ocultas:
+            # Con las mismas palabras que una entidad inexistente: decir «es
+            # privada de otro» ya cuenta algo.
+            raise AdapterError(f"No hay ninguna entidad '{entity_id}' en Home Assistant.")
+        if not self._permitida(entity_id):
+            assert self._dominios is not None
             raise AdapterError(
                 f"'{_dominio(entity_id)}' no es algo que un nino pueda tocar ni consultar "
                 f"desde aqui (solo {', '.join(sorted(self._dominios))}). Dile que se lo "
@@ -115,7 +133,7 @@ class HomeAssistantRestringido:
             )
 
     def _filtrar(self, entidades: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return [e for e in entidades if _dominio(str(e.get("entity_id", ""))) in self._dominios]
+        return [e for e in entidades if self._permitida(str(e.get("entity_id", "")))]
 
     @property
     def configurado(self) -> bool:
@@ -145,7 +163,7 @@ class HomeAssistantRestringido:
     async def buscar_entidades(
         self, *, dominio: str | None = None, texto: str | None = None, limite: int = 60
     ) -> list[dict[str, Any]]:
-        if dominio:
+        if dominio and self._dominios is not None:
             self._vetar(f"{dominio}.")
         encontradas = await self._ha.buscar_entidades(dominio=dominio, texto=texto, limite=limite)
         return self._filtrar(encontradas)
@@ -161,16 +179,19 @@ class HomeAssistantRestringido:
         return await self._ha.snapshot_camara(entity_id)  # pragma: no cover - camera no entra
 
     async def hablar(self, texto: str, altavoz: str) -> dict[str, Any]:
-        self._vetar(altavoz)
+        if self._dominios is not None:
+            self._vetar(altavoz)
         return await self._ha.hablar(texto, altavoz)
 
     async def llamar_servicio(
         self, dominio: str, servicio: str, datos: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
-        self._vetar(f"{dominio}.")
+        if self._dominios is not None:
+            self._vetar(f"{dominio}.")
         for eid in _entidades_de(datos):
             self._vetar(eid)
-            if dominio == "cover" and es_acceso(await self._ha.estado(eid)):
+            es_nino = self._dominios is not None
+            if es_nino and dominio == "cover" and es_acceso(await self._ha.estado(eid)):
                 raise AdapterError(
                     f"'{eid}' es una puerta o un porton, no una persiana: eso no lo "
                     "abre ni lo cierra un nino. Dile que se lo pida a sus padres."
@@ -186,8 +207,10 @@ def _entidades_de(datos: dict[str, Any] | None) -> list[str]:
 
 
 class HomeAssistant:
-    def restringido_a(self, dominios: frozenset[str]) -> HomeAssistantRestringido:
-        return HomeAssistantRestringido(self, dominios)
+    def restringido_a(
+        self, dominios: frozenset[str] | None = None, *, ocultas: frozenset[str] = frozenset()
+    ) -> HomeAssistantRestringido:
+        return HomeAssistantRestringido(self, dominios, ocultas)
 
     def __init__(
         self, settings: Settings, scripts_permitidos: list[str] | None = None

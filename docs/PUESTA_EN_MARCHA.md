@@ -175,19 +175,21 @@ Ejecutar inmediatamente. Acciones:
 `local_only: true` hace que el webhook solo acepte peticiones desde la red
 de casa: pesarse fuera no llega, y nadie de fuera puede escribirlo.
 
-**3. En el inventario**, para que Jarvis sepa de quién es cada uno y no lo
-mezcle:
+**3. En el inventario**, cada sensor en su persona, como entidad privada:
 
 ```yaml
-alias_entidades:
-  peso de ana: input_number.peso_ana
+personas:
+  - nombre: Ana
+    nivel: adulto
+    telegram: ["…"]
+    privadas: ["input_number.peso_ana"]
 ```
 
-Con eso, «Jarvis, ¿cuánto peso?» responde a Ana con lo suyo. Que solo cada
-persona vea su sensor lo hace la misma lista blanca que restringe al niño:
-el sensor de cada adulto se declara en su persona y el de los demás no
-existe para ella. Esa parte del código (sensores privados por persona) se
-hace cuando lleguemos aquí; hasta entonces, los pesos solo los ve el dueño.
+Con eso, «Jarvis, ¿cuánto peso?» responde a Ana con lo suyo, y para todos los
+demás ese sensor no existe: ni para el dueño, ni para el informe de la
+mañana, ni para un chat sin registrar. Si alguien pregunta por él, Jarvis
+responde que no hay ninguna entidad con ese nombre, sin decir que es
+privada de otro.
 
 ---
 
