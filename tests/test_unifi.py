@@ -342,3 +342,61 @@ async def test_eventos(unifi: UniFi) -> None:
     assert e[0]["detecciones"] == ["person"]
     assert e[0]["puntuacion"] == 95
     await unifi.cerrar()
+
+
+# --- Postura de seguridad ---------------------------------------------------
+
+
+def _red_cerrada() -> None:
+    _datos("/rest/portforward", [])
+    _datos("/rest/setting", [{"key": "upnp", "enabled": False}, {"key": "mgmt"}])
+    _datos("/rest/wlanconf", [
+        {"name": "Casa", "enabled": True, "security": "wpapsk", "wpa_mode": "wpa2"},
+        {"name": "Invitados", "enabled": True, "security": "wpapsk", "wpa_mode": "wpa2",
+         "is_guest": True},
+    ])
+    _datos("/rest/networkconf", [
+        {"name": "Default", "purpose": "corporate", "enabled": True},
+        {"name": "IoT", "purpose": "corporate", "vlan": 20, "enabled": True},
+        {"name": "WAN", "purpose": "wan", "enabled": True},
+    ])
+    _datos("/stat/device", [{"type": "udm"}, {"type": "usw"}])
+
+
+@respx.mock
+async def test_una_red_bien_hecha_no_tiene_avisos(unifi: UniFi) -> None:
+    _login_os()
+    _red_cerrada()
+    assert await unifi.postura_seguridad() == []
+
+
+@respx.mock
+async def test_la_postura_dice_cada_cosa_abierta(unifi: UniFi) -> None:
+    """La red de hoy: router de Vodafone, sin gateway UniFi, una sola red."""
+    _login_os()
+    _datos("/rest/portforward", [
+        {"name": "camaras", "dst_port": "8443", "fwd": "192.168.0.20", "enabled": True},
+        {"name": "vieja", "dst_port": "22", "fwd": "192.168.0.9", "enabled": False},
+    ])
+    _datos("/rest/setting", [{"key": "upnp", "enabled": True}])
+    _datos("/rest/wlanconf", [
+        {"name": "Casa", "enabled": True, "security": "wpapsk", "wpa_mode": "wpa"},
+        {"name": "Casa-Invitados", "enabled": True, "security": "open"},
+        {"name": "Vieja", "enabled": False, "security": "open"},
+    ])
+    _datos("/rest/networkconf", [{"name": "Default", "purpose": "corporate", "enabled": True}])
+    _datos("/stat/device", [{"type": "uap"}, {"type": "usw"}])
+
+    avisos = await unifi.postura_seguridad()
+
+    texto = "\n".join(avisos)
+    assert "1 puerto(s) abiertos hacia internet: camaras (8443→192.168.0.20)" in texto
+    assert "vieja" not in texto  # la regla desactivada no cuenta
+    assert "UPnP encendido" in texto
+    assert "'Casa' usa WPA antiguo" in texto
+    assert "'Casa-Invitados' no tiene contrasena" in texto
+    assert "'Casa-Invitados' no esta marcada como red de invitados" in texto
+    assert "'Vieja'" not in texto  # apagada
+    assert "no hay ninguna wifi de invitados aislada" in texto
+    assert "una sola red para todo" in texto
+    assert "sin gateway UniFi" in texto

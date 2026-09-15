@@ -38,6 +38,12 @@ Esto es lo que hay que tener, en orden de importancia.
   gateway UniFi o el acceso remoto de Home Assistant (Nabu Casa), que no
   abre puertos.
 
+**Cómo comprobarlo**: con Jarvis en marcha, `/verificar` en Telegram lee
+la configuración de UniFi y dice qué queda abierto: puertos hacia internet,
+UPnP, wifi sin contraseña o con WPA antiguo, invitados sin aislar, una sola
+red para todo, o falta de gateway. Cuando todo esté cerrado lo dirá con un
+✅ en «Seguridad de la red».
+
 ## 2. Las cuentas
 
 - **UniFi**: cuenta de administrador con segundo factor activado. Para

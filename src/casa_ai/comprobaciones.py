@@ -86,6 +86,12 @@ async def comprobar_subsistemas(app: Aplicacion) -> list[Comprobacion]:
             f"{len(dispositivos)} equipos, WAN {wan.get('estado', '?')} (IP {wan.get('ip', '?')})"
         )
 
+    async def prueba_red() -> str:
+        avisos = await unifi.postura_seguridad()
+        if avisos:
+            raise RuntimeError("; ".join(avisos))
+        return "sin puertos abiertos, sin UPnP, invitados aislados, mas de una red y gateway"
+
     async def prueba_camaras() -> str:
         camaras = await unifi.camaras()
         nombres = ", ".join(f"{c['nombre']} [{c['id']}]" for c in camaras[:4])
@@ -117,6 +123,12 @@ async def comprobar_subsistemas(app: Aplicacion) -> list[Comprobacion]:
         ),
     ]
     if unifi.configurado:
+        salida.append(
+            await _una(
+                "Seguridad de la red", unifi, prueba_red,
+                "Cada punto esta explicado en docs/RED.md.",
+            )
+        )
         salida.append(
             await _una("Camaras UniFi Protect", unifi, prueba_camaras, "Necesita UniFi.")
         )

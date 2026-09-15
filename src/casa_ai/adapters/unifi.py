@@ -243,6 +243,64 @@ class UniFi:
             for w in datos
         ]
 
+    async def postura_seguridad(self) -> list[str]:
+        """Lo que la red tiene abierto, en frases. Vacio = nada que decir.
+
+        Es la parte de `docs/RED.md` que se puede comprobar desde dentro:
+        puertos hacia internet, UPnP, wifi sin contrasena o con WPA antiguo,
+        invitados sin aislar, y si hay gateway UniFi y mas de una red (sin
+        eso no hay cortafuegos entre los aparatos y los moviles).
+        """
+        avisos: list[str] = []
+
+        abiertos = [
+            p for p in await self._red_get("/rest/portforward") if p.get("enabled", True)
+        ]
+        if abiertos:
+            lista = ", ".join(
+                f"{p.get('name') or '?'} ({p.get('dst_port')}→{p.get('fwd')})" for p in abiertos
+            )
+            avisos.append(f"{len(abiertos)} puerto(s) abiertos hacia internet: {lista}")
+
+        for ajuste in await self._red_get("/rest/setting"):
+            if ajuste.get("key") == "upnp" and ajuste.get("enabled"):
+                avisos.append("UPnP encendido: cualquier aparato puede abrir puertos solo")
+
+        wifis = await self._red_get("/rest/wlanconf")
+        for w in wifis:
+            if not w.get("enabled", True):
+                continue
+            nombre = w.get("name", "?")
+            if w.get("security") == "open":
+                avisos.append(f"la wifi '{nombre}' no tiene contrasena")
+            elif w.get("wpa_mode") == "wpa":
+                avisos.append(f"la wifi '{nombre}' usa WPA antiguo; ponla en WPA2 o WPA3")
+            parece_invitados = any(x in str(nombre).lower() for x in ("invitad", "guest"))
+            if parece_invitados and not w.get("is_guest"):
+                avisos.append(
+                    f"la wifi '{nombre}' no esta marcada como red de invitados: sus "
+                    "clientes ven el resto de la casa"
+                )
+        if wifis and not any(w.get("is_guest") for w in wifis if w.get("enabled", True)):
+            avisos.append("no hay ninguna wifi de invitados aislada")
+
+        redes = [
+            r for r in await self._red_get("/rest/networkconf")
+            if r.get("enabled", True) and r.get("purpose") in ("corporate", "vlan-only")
+        ]
+        if len(redes) < 2:
+            avisos.append(
+                "una sola red para todo: los aparatos (KNX, inversor, camaras) comparten "
+                "red con moviles y visitas; falta una red IoT"
+            )
+
+        tipos = {d.get("type") for d in await self._red_get("/stat/device")}
+        if not tipos & {"ugw", "udm", "uxg"}:
+            avisos.append(
+                "sin gateway UniFi: no hay cortafuegos entre redes, el aislamiento no es real"
+            )
+        return avisos
+
     # --- Red: escritura --------------------------------------------------
     async def cambiar_wifi(self, ssid: str, activar: bool) -> dict[str, Any]:
         objetivo = None

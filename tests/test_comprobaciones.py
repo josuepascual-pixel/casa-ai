@@ -69,3 +69,34 @@ async def test_verificar_cierra_con_la_seguridad_de_la_configuracion(settings, s
     salida = await app.comprobar()
     assert "🔓 Seguridad: EXIGIR_CONFIRMACION" in salida
     assert "🔒" not in salida
+
+
+async def test_la_seguridad_de_la_red_sale_en_verificar(settings, store) -> None:
+    async def salud(_self):
+        return {"wan": {"estado": "ok", "ip": "1.2.3.4"}}
+
+    async def dispositivos(_self):
+        return []
+
+    async def camaras(_self):
+        return []
+
+    async def abierta(_self):
+        return ["UPnP encendido", "una sola red para todo"]
+
+    async def cerrada(_self):
+        return []
+
+    def _con(postura):
+        return _app(settings, store, unifi=adaptador(
+            True, salud=salud, dispositivos=dispositivos, camaras=camaras,
+            postura_seguridad=postura,
+        ), ha=False, musica=False, energia=False, knx=False)
+
+    por_nombre = {c.nombre: c for c in await comprobar_subsistemas(_con(abierta))}
+    red = por_nombre["Seguridad de la red"]
+    assert red.estado == "fallo" and "UPnP encendido; una sola red para todo" in red.detalle
+    assert "RED.md" in red.pista
+
+    por_nombre = {c.nombre: c for c in await comprobar_subsistemas(_con(cerrada))}
+    assert por_nombre["Seguridad de la red"].estado == "ok"
