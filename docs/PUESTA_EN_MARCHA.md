@@ -133,10 +133,61 @@ Todo en `VOZ.md`. En orden:
 
 ## Fase 5 — Tanita
 
-Automatización de Atajos en cada iPhone: «cuando se añada una muestra de
-peso a Salud → obtener contenido de URL» hacia el webhook de Home Assistant
-con el nombre de la persona. Un sensor por persona; solo su chat lo ve. Los
-pasos exactos se escriben cuando lleguemos aquí.
+La báscula manda cada pesada a Apple Salud a través de la app My TANITA. De
+ahí a Home Assistant va por un atajo del iPhone, y en Home Assistant queda
+como un sensor con el nombre de la persona. Un sensor por persona, y solo su
+chat lo ve. Tres pasos, y el primero se hace una sola vez.
+
+**1. En Home Assistant, un webhook por persona.** Ajustes → Automatizaciones
+→ Crear → editar en YAML, y pegar (cambia `ana` por el nombre en minúsculas
+de cada persona, y el `webhook_id` por uno largo e imposible de adivinar):
+
+```yaml
+alias: Peso de Ana
+triggers:
+  - trigger: webhook
+    webhook_id: peso-ana-7f3a9c2e1b
+    allowed_methods: [POST]
+    local_only: true
+actions:
+  - action: input_number.set_value
+    target:
+      entity_id: input_number.peso_ana
+    data:
+      value: "{{ trigger.json.peso }}"
+```
+
+Antes, el número donde se guarda: Ajustes → Dispositivos y servicios →
+Ayudantes → Crear ayudante → Número, nombre «Peso Ana», mínimo 20, máximo
+200, unidad kg. Eso crea `input_number.peso_ana`.
+
+**2. En el iPhone de cada persona, el atajo.** App Atajos → Automatización →
+Nueva → «Muestra de salud» → tipo Peso → «Se ha registrado una muestra» →
+Ejecutar inmediatamente. Acciones:
+
+1. **Buscar muestras de salud**: tipo Peso, ordenar por fecha de inicio, más
+   reciente primero, límite 1.
+2. **Obtener detalles de la muestra**: Valor.
+3. **Obtener contenido de URL**: `http://<ip-de-home-assistant>:8123/api/webhook/peso-ana-7f3a9c2e1b`,
+   método POST, cuerpo de solicitud JSON con una clave `peso` y como valor
+   la salida del paso anterior.
+
+`local_only: true` hace que el webhook solo acepte peticiones desde la red
+de casa: pesarse fuera no llega, y nadie de fuera puede escribirlo.
+
+**3. En el inventario**, para que Jarvis sepa de quién es cada uno y no lo
+mezcle:
+
+```yaml
+alias_entidades:
+  peso de ana: input_number.peso_ana
+```
+
+Con eso, «Jarvis, ¿cuánto peso?» responde a Ana con lo suyo. Que solo cada
+persona vea su sensor lo hace la misma lista blanca que restringe al niño:
+el sensor de cada adulto se declara en su persona y el de los demás no
+existe para ella. Esa parte del código (sensores privados por persona) se
+hace cuando lleguemos aquí; hasta entonces, los pesos solo los ve el dueño.
 
 ---
 
