@@ -8,6 +8,7 @@ informacion no sensible y comoda de editar a mano.
 
 from __future__ import annotations
 
+import ipaddress
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -477,6 +478,12 @@ class Settings(BaseSettings):
     # Por defecto solo escucha en localhost. Si lo abres a la red, pon el token.
     api_host: str = "127.0.0.1"
     api_puerto: int = 8099
+    # Desde donde se admiten conexiones al API, en IP o redes CIDR separadas
+    # por comas. Vacio = desde cualquier sitio que alcance el puerto. El
+    # complemento lo fija a localhost y a la red del Supervisor: asi el panel
+    # solo se abre desde dentro de Home Assistant, tras su login, y ningun
+    # equipo de la casa ve el puerto aunque tenga el token.
+    api_clientes: str = ""
 
     # --- Operacion ---
     config_path: Path = Path("config/config.yaml")
@@ -485,6 +492,22 @@ class Settings(BaseSettings):
     # Toda accion de riesgo alto pide confirmacion explicita antes de ejecutarse.
     exigir_confirmacion: bool = True
     zona_horaria: str = "Europe/Madrid"
+
+    @property
+    def redes_api_permitidas(self) -> list[ipaddress.IPv4Network | ipaddress.IPv6Network]:
+        return [ipaddress.ip_network(x, strict=False) for x in _csv(self.api_clientes)]
+
+    def cliente_api_permitido(self, ip: str) -> bool:
+        """Sin lista, todo vale; con lista, solo lo que este en ella. Una direccion
+        que no se puede interpretar no esta en ninguna red: fuera."""
+        redes = self.redes_api_permitidas
+        if not redes:
+            return True
+        try:
+            direccion = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        return any(direccion in red for red in redes)
 
     @property
     def chats_telegram(self) -> set[int]:
@@ -531,6 +554,17 @@ class Settings(BaseSettings):
             avisos.append(
                 "EXIGIR_CONFIRMACION esta desactivado: las acciones de riesgo "
                 "alto se ejecutan sin preguntar."
+            )
+        if self.api_host not in ("127.0.0.1", "localhost", "::1") and not self.api_clientes:
+            avisos.append(
+                f"El API escucha en {self.api_host} para cualquier equipo de la red. "
+                "Limitalo con API_CLIENTES (p. ej. 127.0.0.0/8,172.30.32.0/23) para "
+                "que solo entre por Home Assistant."
+            )
+        if len(self.chats_telegram) > 1 and not self.cargar_inventario().personas:
+            avisos.append(
+                "Hay varios chats de Telegram autorizados y ninguna persona declarada "
+                "en `personas:`: todos cuentan como adultos con todas las herramientas."
             )
         return avisos
 

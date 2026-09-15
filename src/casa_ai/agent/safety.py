@@ -44,6 +44,15 @@ class Ejecutor:
                 True,
             )
 
+        if herramienta.riesgo is not Riesgo.LECTURA and self.ctx.store.bloqueo() is not None:
+            return (
+                "LA CASA ESTA BLOQUEADA: el dueno ha activado el bloqueo y no se ejecuta "
+                "ninguna accion, solo consultas. No lo reintentes ni busques otra forma; "
+                "dile al usuario que la casa esta bloqueada y que el dueno puede "
+                "desbloquearla con /desbloquear en Telegram.",
+                True,
+            )
+
         necesita_confirmacion = (
             herramienta.riesgo is Riesgo.ALTO and self.ctx.settings.exigir_confirmacion
         )
@@ -142,6 +151,8 @@ class Ejecutor:
         intentaba establecer. Canal, usuario, conversacion, un solo uso y
         caducidad se siguen comprobando.
         """
+        if self.ctx.store.bloqueo() is not None:
+            return "La casa esta bloqueada: no se ejecuta nada hasta /desbloquear.", True
         pendiente, motivo = self.ctx.store.tomar_pendiente(
             token,
             canal=self.ctx.canal,

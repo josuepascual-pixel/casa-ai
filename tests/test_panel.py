@@ -158,3 +158,15 @@ def test_el_panel_no_refresca_en_segundo_plano() -> None:
     assert "visibilitychange" in js
     armar = js[js.index("function armarRefresco()"):]
     assert "document.hidden" in armar[: armar.index("\n}")]
+
+
+def test_el_panel_usa_rutas_relativas_para_el_ingress() -> None:
+    """Por el ingress de Home Assistant la pagina vive bajo un prefijo: una
+    ruta absoluta se saldria de el y el panel quedaria en blanco."""
+    from pathlib import Path
+
+    carpeta = Path(__file__).resolve().parents[1] / "src" / "casa_ai" / "panel"
+    html = (carpeta / "index.html").read_text("utf-8")
+    js = (carpeta / "panel.js").read_text("utf-8")
+    assert 'src="panel.js"' in html and 'src="/panel.js"' not in html
+    assert 'pedir("api/panel")' in js and '"/api/panel' not in js and '`/api/panel' not in js

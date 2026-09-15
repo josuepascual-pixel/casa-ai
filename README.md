@@ -118,7 +118,8 @@ El sistema pasó una revisión de seguridad que encontró seis vulnerabilidades
 reales, todas corregidas y todas con test que las cubre. Están documentadas una
 por una, con lo que permitían y lo que sigue sin resolver, en
 **[`docs/SEGURIDAD.md`](docs/SEGURIDAD.md)**. Cómo hablarle por voz, incluido un
-satélite en el cuarto de un niño sin teléfono: [`docs/VOZ.md`](docs/VOZ.md). El orden
+satélite en el cuarto de un niño sin teléfono: [`docs/VOZ.md`](docs/VOZ.md). Lo que
+el software no puede proteger y hay que hacer en la red: [`docs/RED.md`](docs/RED.md). El orden
 real de instalación, fase a fase: [`docs/PUESTA_EN_MARCHA.md`](docs/PUESTA_EN_MARCHA.md).
 
 ## Puesta en marcha

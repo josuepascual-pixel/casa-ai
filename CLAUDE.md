@@ -9,7 +9,7 @@ WhatsApp, texto o nota de voz.
 
 ```bash
 pip install -e ".[dev,voz]"                  # `voz` es opcional y pesada
-PYTHONPATH=src python -m pytest tests -q     # 503 tests, no tocan hardware
+PYTHONPATH=src python -m pytest tests -q     # 512 tests, no tocan hardware
 ruff check src tests                         # debe quedar limpio
 casa-ai                                      # backend + bot + rutinas
 
@@ -202,6 +202,7 @@ recarga con `POST /recargar-inventario`. Ver `docs/INTEGRACIONES.md`.
 - `docs/INTEGRACIONES.md` — las apps de la casa y su vía de integración
 - `docs/SEGURIDAD.md` — modelo de amenazas, la revisión y lo que sigue abierto
 - `docs/VOZ.md` — los tres caminos de voz: Telegram, atajo de Siri y satélite por aparato
+- `docs/RED.md` — lo que Jarvis no puede proteger: la red, las cuentas y los móviles
 - `docs/PUESTA_EN_MARCHA.md` — el orden real de instalación, fase a fase, con `config/config.casa.yaml`
 
 ## El panel

@@ -331,3 +331,41 @@ def test_una_firma_no_ascii_da_401_no_500(cliente: TestClient) -> None:
         headers={"X-Hub-Signature-256": "sha256=ñ".encode("latin-1")},
     )
     assert r.status_code == 401
+
+
+# --- Clientes del API -------------------------------------------------------
+
+
+def test_la_lista_de_clientes_del_api(settings: Settings) -> None:
+    abierto = settings.model_copy(update={"api_clientes": ""})
+    assert abierto.cliente_api_permitido("192.168.0.77")
+
+    cerrado = settings.model_copy(update={"api_clientes": "127.0.0.0/8,172.30.32.0/23"})
+    assert cerrado.cliente_api_permitido("127.0.0.1")
+    assert cerrado.cliente_api_permitido("172.30.32.2")   # el Supervisor (ingress)
+    assert not cerrado.cliente_api_permitido("192.168.0.77")
+    assert not cerrado.cliente_api_permitido("testclient")  # lo ilegible, fuera
+
+
+def test_fuera_de_la_lista_no_hay_api_ni_con_token(monkeypatch, tmp_path: Path) -> None:
+    """Es lo que hace que el puerto no exista para la red de la casa cuando el
+    complemento lo limita a localhost y al Supervisor."""
+    with app_de_prueba(
+        monkeypatch, tmp_path, API_TOKEN=TOKEN, API_CLIENTES="10.0.0.0/8"
+    ) as c:
+        assert c.get("/salud", headers=_auth()).status_code == 403
+        assert c.get("/panel").status_code == 403
+
+
+def test_el_complemento_limita_el_api_a_home_assistant() -> None:
+    run = (Path(__file__).resolve().parents[1] / "addon" / "casa_ai" / "run.sh").read_text("utf-8")
+    assert 'export API_CLIENTES="127.0.0.0/8,::1/128,172.30.32.0/23"' in run
+    cfg = (Path(__file__).resolve().parents[1] / "addon" / "casa_ai" / "config.yaml").read_text()
+    assert "ingress: true" in cfg and "ingress_port: 8099" in cfg
+
+
+def test_avisa_si_el_api_esta_abierto_a_toda_la_red(settings: Settings) -> None:
+    abierto = settings.model_copy(update={"api_host": "0.0.0.0", "api_clientes": ""})
+    assert any("API_CLIENTES" in a for a in abierto.avisos_de_seguridad())
+    cerrado = settings.model_copy(update={"api_host": "0.0.0.0", "api_clientes": "127.0.0.0/8"})
+    assert not any("API_CLIENTES" in a for a in cerrado.avisos_de_seguridad())

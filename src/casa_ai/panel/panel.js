@@ -28,6 +28,8 @@ function olvidarToken() {
   $("acceso").classList.remove("oculto");
 }
 
+// Rutas relativas a proposito: por el ingress de Home Assistant la pagina
+// vive bajo /api/hassio_ingress/<token>/, y una ruta absoluta se saldria.
 async function pedir(ruta, opciones = {}) {
   const r = await fetch(ruta, {
     ...opciones,
@@ -348,7 +350,7 @@ async function pintarCamaras(camaras) {
     cont.appendChild(fig);
     // Fetch en vez de src directo: la imagen necesita la cabecera del token.
     try {
-      const r = await pedir(`/api/panel/camara/${encodeURIComponent(c.nombre)}`);
+      const r = await pedir(`api/panel/camara/${encodeURIComponent(c.nombre)}`);
       img.src = URL.createObjectURL(await r.blob());
     } catch {
       pie.textContent += " — sin imagen";
@@ -360,7 +362,7 @@ async function pintarCamaras(camaras) {
 
 async function refrescar() {
   try {
-    const datos = await (await pedir("/api/panel")).json();
+    const datos = await (await pedir("api/panel")).json();
     $("momento").textContent = `actualizado a las ${datos.momento}`;
     pintarIndicadores(datos.energia);
     pintarBateria(datos.energia);

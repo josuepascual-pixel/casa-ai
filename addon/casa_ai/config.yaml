@@ -24,6 +24,14 @@ host_network: true
 homeassistant_api: true
 map:
   - addon_config:rw
+# El panel se abre desde dentro de Home Assistant, tras su login (y su
+# segundo factor si esta activado). El puerto no se publica a la red: run.sh
+# limita los clientes del API a localhost y a la red del Supervisor.
+ingress: true
+ingress_port: 8099
+ingress_entry: panel
+panel_icon: mdi:robot
+panel_title: Jarvis
 options:
   anthropic_api_key: ""
   modelo: claude-opus-5

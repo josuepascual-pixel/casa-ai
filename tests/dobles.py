@@ -111,6 +111,15 @@ class StoreFalso:
     def auditoria(self, limite: int = 10) -> list[dict[str, Any]]:
         return self.registros
 
+    def bloqueo(self) -> dict[str, Any] | None:
+        return getattr(self, "_bloqueo", None)
+
+    def bloquear(self, quien: str) -> None:
+        self._bloqueo = {"quien": quien, "ts": 0.0}
+
+    def desbloquear(self) -> None:
+        self._bloqueo = None
+
 
 class AplicacionFalsa:
     """Doble de Aplicacion: registra los turnos, no habla con ningun modelo."""
@@ -154,6 +163,12 @@ class AplicacionFalsa:
 
     def resumen_configuracion(self) -> dict[str, Any]:
         return {"home_assistant": True, "unifi": False, "herramientas_activas": ["a", "b"]}
+
+    def chats_de_duenos(self) -> set[int]:
+        return Aplicacion.chats_de_duenos(self)  # type: ignore[arg-type]
+
+    def es_dueno(self, canal: str, usuario: str) -> bool:
+        return Aplicacion.es_dueno(self, canal, usuario)  # type: ignore[arg-type]
 
     async def comprobar(self) -> str:
         return "✅ Home Assistant: 3 entidades\n❌ Musica BluOS: nadie responde"

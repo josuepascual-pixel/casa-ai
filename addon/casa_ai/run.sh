@@ -31,6 +31,10 @@ export CONFIG_PATH="/config/config.yaml"
 # devuelven 503 a proposito, asi que abrirlo no relaja nada.
 export KNX_ROUTE_BACK="false"
 export API_HOST="0.0.0.0"
+# Escucha en todo para que el Supervisor (ingress) y Home Assistant lleguen,
+# pero solo se les atiende a ellos: localhost y la red interna de HA. Ningun
+# equipo de la casa ve el API, con o sin token.
+export API_CLIENTES="127.0.0.0/8,::1/128,172.30.32.0/23"
 export TZ="${ZONA_HORARIA:-Europe/Madrid}"
 
 if [ ! -f /config/config.yaml ]; then

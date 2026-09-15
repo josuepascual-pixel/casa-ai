@@ -374,6 +374,24 @@ class Aplicacion:
             return "La planta no esta configurada: falta SUNGROW_HOST o UniFi para buscarla."
         return await orden_de_sondeo(energia, texto)
 
+    def chats_de_duenos(self) -> set[int]:
+        """Los chats de Telegram a los que avisar de algo de seguridad.
+
+        Con personas declaradas, los de nivel dueno; sin ellas, todos los
+        autorizados, que es lo que hay.
+        """
+        chats = self.settings.chats_telegram
+        if not self.inventario.personas:
+            return chats
+        return {
+            c for c in chats
+            if (p := self.inventario.persona_de("telegram", str(c))) and p.nivel == "dueno"
+        }
+
+    def es_dueno(self, canal: str, usuario: str) -> bool:
+        persona = self.inventario.persona_de(canal, usuario)
+        return persona is None or persona.nivel == "dueno"
+
     @property
     def nombre_asistente(self) -> str:
         """Como se llama el agente, para que los canales saluden con su nombre."""

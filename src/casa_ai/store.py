@@ -67,6 +67,11 @@ CREATE TABLE IF NOT EXISTS mensajes (
     contenido TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_mensajes_conv ON mensajes(conversacion, id);
+
+CREATE TABLE IF NOT EXISTS ajustes (
+    clave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+);
 """
 
 # Una accion pendiente caduca: confirmar a ciegas algo pedido hace dos horas
@@ -314,6 +319,29 @@ class Store:
                 (token, canal, usuario, conversacion),
             )
             return cur.rowcount > 0
+
+    # --- Bloqueo ---------------------------------------------------------
+    # Un interruptor de emergencia: con la casa bloqueada no se ejecuta nada
+    # que no sea una lectura, por ningun canal, hasta que el dueno la
+    # desbloquee. Es lo que se pulsa si se pierde un movil.
+
+    def bloquear(self, quien: str) -> None:
+        with self._conn() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO ajustes (clave, valor) VALUES ('bloqueo', ?)",
+                (json.dumps({"quien": quien, "ts": time.time()}),),
+            )
+            c.execute("UPDATE pendientes SET estado='cancelada' WHERE estado='pendiente'")
+
+    def desbloquear(self) -> None:
+        with self._conn() as c:
+            c.execute("DELETE FROM ajustes WHERE clave = 'bloqueo'")
+
+    def bloqueo(self) -> dict[str, Any] | None:
+        """Quien bloqueo la casa y cuando, o None si esta abierta."""
+        with self._conn() as c:
+            fila = c.execute("SELECT valor FROM ajustes WHERE clave = 'bloqueo'").fetchone()
+        return json.loads(fila["valor"]) if fila else None
 
     def cancelar_pendientes(self, conversacion: str) -> int:
         """Cancela lo pendiente de una conversacion (p.ej. al hacer /reset)."""

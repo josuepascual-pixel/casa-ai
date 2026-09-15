@@ -22,8 +22,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from .adapters.base import AdapterError
@@ -184,6 +184,18 @@ def crear_app() -> FastAPI:
     # dato: piden el token al usuario y con el llaman a /api/panel. Los datos
     # si van autenticados.
     _PANEL = Path(__file__).parent / "panel"
+
+    @api.middleware("http")
+    async def solo_clientes_permitidos(request: Request, call_next: Any) -> Any:
+        """Antes de mirar el token: si la IP no esta en la lista, no hay API.
+
+        Es la capa que hace que el puerto no exista para la red de la casa
+        cuando el complemento lo fija a localhost y al Supervisor.
+        """
+        ip = request.client.host if request.client else ""
+        if not settings.cliente_api_permitido(ip):
+            return JSONResponse({"detail": "Cliente no permitido."}, status_code=403)
+        return await call_next(request)
 
     @api.get("/panel", include_in_schema=False)
     async def panel() -> FileResponse:

@@ -224,3 +224,19 @@ Honestamente:
 - **En un grupo de Telegram la persona es quien escribe**, no el grupo: el
   nivel y los botones de confirmación van con el usuario, y el informe de la
   mañana no se manda a chats de niños.
+- **El API no existe para la red de casa.** `API_CLIENTES` limita desde qué
+  direcciones se atiende; el complemento lo fija a localhost y a la red del
+  Supervisor, así que el panel solo se abre desde dentro de Home Assistant
+  (ingress, tras su login) y ningún equipo de la casa llega al puerto aunque
+  tenga el token. Con el API abierto a toda la red, `/verificar` avisa.
+- **Interruptor de emergencia.** `/bloquear` (solo el dueño) deja la casa en
+  solo lectura por todos los canales, cancela lo pendiente y lo mantiene
+  hasta `/desbloquear`. Es lo que se pulsa si se pierde un móvil.
+- **Nadie llama a la puerta en silencio.** Un chat no autorizado que escriba
+  al bot se rechaza y el dueño recibe un aviso con su identificador, una vez
+  por hora y por chat.
+- **Lo que el software no puede proteger está en `docs/RED.md`**: los
+  aparatos de la casa no piden contraseña, y quien esté en la misma red puede
+  hablarles sin pasar por Jarvis. La red de invitados aislada y una VLAN para
+  los aparatos, con un gateway que ponga reglas entre ellas, es lo que cierra
+  ese camino.

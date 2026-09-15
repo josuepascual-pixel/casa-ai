@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import tempfile
+import time
 from collections.abc import Awaitable, Callable
 from functools import wraps
 from pathlib import Path
@@ -70,6 +71,8 @@ class BotTelegram:
     def __init__(self, app: Aplicacion) -> None:
         self.app = app
         self.application: Application | None = None
+        # Ultimo aviso por chat desconocido: uno por hora, no uno por mensaje.
+        self._avisados: dict[int, float] = {}
 
     # --- Ciclo de vida ---------------------------------------------------
     def construir(self) -> Application:
@@ -85,6 +88,8 @@ class BotTelegram:
         application.add_handler(CommandHandler("verificar", self._cmd_verificar))
         application.add_handler(CommandHandler("descubrir", self._cmd_descubrir))
         application.add_handler(CommandHandler("sondear", self._cmd_sondear))
+        application.add_handler(CommandHandler("bloquear", self._cmd_bloquear))
+        application.add_handler(CommandHandler("desbloquear", self._cmd_desbloquear))
         application.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, self._voz))
         application.add_handler(MessageHandler(filters.PHOTO, self._foto))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._texto))
@@ -136,6 +141,31 @@ class BotTelegram:
                 f"No estas autorizado. Tu chat_id es {chat.id}; si eres el dueno "
                 "de la casa, anadelo a TELEGRAM_CHATS_AUTORIZADOS y reinicia."
             )
+        if chat is not None:
+            await self._avisar_intento(chat)
+
+    async def _avisar_intento(self, chat: Any) -> None:
+        """Que el dueno se entere de que alguien ha llamado a la puerta.
+
+        El bot es publico por construccion (cualquiera que sepa su nombre le
+        puede escribir); lo que no puede ser es que eso pase en silencio.
+        """
+        ahora = time.monotonic()
+        if ahora - self._avisados.get(chat.id, -1e9) < 3600 or self.application is None:
+            return
+        self._avisados[chat.id] = ahora
+        quien = " ".join(
+            x for x in (getattr(chat, "first_name", None), getattr(chat, "username", None)) if x
+        )
+        texto = (
+            f"⚠️ Alguien ha intentado hablar conmigo desde un chat no autorizado: "
+            f"{chat.id}{f' ({quien})' if quien else ''}. Lo he rechazado."
+        )
+        for dueno in self.app.chats_de_duenos():
+            try:
+                await self.application.bot.send_message(chat_id=dueno, text=texto)
+            except Exception:  # noqa: BLE001 - avisar no puede tumbar el rechazo
+                log.exception("No se pudo avisar al chat %s", dueno)
 
     @staticmethod
     def _usuario(update: Update) -> str:
@@ -290,6 +320,7 @@ class BotTelegram:
             "/descubrir busca los aparatos en la red y escribe su configuracion\n"
             "/sondear la planta Sungrow: que equipos responden tras el Logger\n"
             "/auditoria ultimas acciones ejecutadas\n"
+            "/bloquear emergencia: solo consultas hasta /desbloquear (solo el dueno)\n"
             "/reset olvida la conversacion"
         )
 
@@ -306,6 +337,8 @@ class BotTelegram:
         persona = self.app.inventario.persona_de(CANAL, self._usuario(update))
         if persona is not None:
             lineas.append(f"\nHablas como {persona.nombre} ({persona.nivel}).")
+        if (bloqueo := self.app.store.bloqueo()) is not None:
+            lineas.append(f"\n🔒 CASA BLOQUEADA por {bloqueo['quien']}. /desbloquear para abrirla.")
         herramientas = cfg.get("herramientas_activas", [])
         assert isinstance(herramientas, list)
         lineas.append(f"\n{len(herramientas)} herramientas activas.")
@@ -359,6 +392,29 @@ class BotTelegram:
         texto = await self.app.sondear_planta(partes[1] if len(partes) > 1 else "sondear")
         for trozo in partir(texto, LIMITE_MENSAJE):
             await update.message.reply_text(trozo)
+
+    @solo_autorizados
+    async def _cmd_bloquear(self, update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        """Interruptor de emergencia: solo consultas hasta /desbloquear."""
+        assert update.message is not None
+        if not self.app.es_dueno(CANAL, self._usuario(update)):
+            await update.message.reply_text("Solo el dueno puede bloquear la casa.")
+            return
+        self.app.store.bloquear(self._usuario(update))
+        await update.message.reply_text(
+            "Casa bloqueada. No se ejecuta ninguna accion por ningun canal, solo "
+            "consultas, y las propuestas pendientes quedan canceladas. /desbloquear "
+            "para volver a la normalidad."
+        )
+
+    @solo_autorizados
+    async def _cmd_desbloquear(self, update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        assert update.message is not None
+        if not self.app.es_dueno(CANAL, self._usuario(update)):
+            await update.message.reply_text("Solo el dueno puede desbloquear la casa.")
+            return
+        self.app.store.desbloquear()
+        await update.message.reply_text("Casa desbloqueada.")
 
     @solo_autorizados
     async def _cmd_reset(self, update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:

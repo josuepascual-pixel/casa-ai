@@ -16,16 +16,19 @@ Siri no puede pasarle una frase a otro asistente por sí sola, pero un Atajo
 sí. Se crea una vez en el iPhone (Atajos → + → nombre «Jarvis»):
 
 1. **Dictar texto** (idioma español).
-2. **Obtener contenido de URL**: `http://<ip-de-home-assistant>:8099/chat`,
-   método POST, cabecera `Authorization: Bearer <API_TOKEN>`, cuerpo JSON
-   `{"mensaje": <Texto dictado>, "hilo": "siri-laura"}`.
-3. **Obtener valor de diccionario** `respuesta`.
+2. **Obtener contenido de URL**:
+   `http://<ip-de-home-assistant>:8123/api/conversation/process`, método
+   POST, cabecera `Authorization: Bearer <token de Home Assistant de esa
+   persona>`, cuerpo JSON
+   `{"text": <Texto dictado>, "agent_id": "conversation.casa_ai", "language": "es"}`.
+3. **Obtener valor de diccionario** `response` → `speech` → `plain` → `speech`.
 4. **Hablar texto**.
 
-Desde entonces: «Oye Siri, Jarvis» → dicta → responde en voz alta. Cada
-persona pone su propio `hilo` para que las conversaciones no se mezclen. Este
-camino cuenta como dueño (usa el token del API), así que es solo para los
-adultos y el token no se comparte.
+El token de Home Assistant se crea en el perfil de cada uno (Ajustes →
+Perfil → Seguridad → Tokens de acceso de larga duración): así cada persona
+entra con su propia identidad (`usuario-<id>` en `personas:`), no con un
+token compartido, y el backend no tiene que estar abierto a la red: la
+frase entra por Home Assistant, que es quien la autentica.
 
 Fuera de casa hace falta llegar al backend: VPN de UniFi, o el acceso remoto
 de Home Assistant (Nabu Casa) con el complemento expuesto por ingress.
@@ -66,9 +69,12 @@ identidad:
   energía, red ni acciones con consecuencias, y el prompt le dice a Jarvis
   que lo tutee y que lo que no pueda se lo pida a sus padres.
 
-Un satélite en la cocina para los adultos se declara igual, con su
-`device_id` bajo la persona que corresponda, y entonces las confirmaciones
-de riesgo se hacen de palabra en la conversación siguiente («sí, hazlo»).
+Un adulto que hable a Jarvis desde la app de Home Assistant o desde el atajo
+de Siri se declara con su usuario de Home Assistant: `dispositivos:
+["usuario-<id de usuario de HA>"]` (el id sale en Ajustes → Personas →
+Usuarios). Un satélite en la cocina se declara con su `device_id`. En los
+dos casos las confirmaciones de riesgo se hacen de palabra en la frase
+siguiente («sí»), y quien no esté declarado es niño.
 
 ## La voz de Jarvis
 

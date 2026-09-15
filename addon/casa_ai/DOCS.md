@@ -25,7 +25,9 @@ sin que tengas que crear ningun token.
   que sobrevive a las actualizaciones y entra en las copias de seguridad.
 - **Red.** Va en la red de la maquina, sin NAT. El bus KNX, el Modbus del
   registrador Sungrow y los reproductores BluOS se alcanzan directamente.
-- **Panel.** En `http://<ip-de-home-assistant>:8099/panel`, con el token del API.
+- **Panel.** En la barra lateral de Home Assistant («Jarvis»), tras el login
+  de HA. El puerto del API no se atiende desde la red de casa: solo desde
+  Home Assistant.
 
 ## El inventario de la casa
 
