@@ -97,6 +97,7 @@ def test_datos_del_panel_con_token(cliente: TestClient) -> None:
     datos = r.json()
     assert "momento" in datos
     assert datos["camaras"] == []  # sin inventario configurado
+    assert datos["quien"] is None  # `api` no es una persona declarada
 
 
 def test_una_camara_inexistente_da_error_claro(cliente: TestClient) -> None:
@@ -202,6 +203,7 @@ def test_por_el_ingress_no_hace_falta_token(monkeypatch, tmp_path: Path) -> None
         r = c.get("/api/panel", headers={**INGRESS, "X-Remote-User-Id": "papa"})
         assert r.status_code == 200
         assert [x["nombre"] for x in r.json()["camaras"]] == ["Cine"]
+        assert r.json()["quien"] == "Papa"
 
         # La tablet del nino: mismo panel, sin camaras, y la captura ni con enganos.
         r = c.get("/api/panel", headers={**INGRESS, "X-Remote-User-Id": "peque"})

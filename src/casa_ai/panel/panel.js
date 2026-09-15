@@ -71,8 +71,8 @@ const vatios = (w) => {
     : `${Math.round(n)} W`;
 };
 
-function indicador(etiqueta, valor, unidad, pie) {
-  const d = el("div", "indicador");
+function indicador(etiqueta, valor, unidad, pie, clase) {
+  const d = el("div", clase ? `indicador ${clase}` : "indicador");
   const v = el("div", "valor", valor);
   if (unidad) v.appendChild(el("span", "unidad", ` ${unidad}`));
   d.append(el("div", "etiqueta", etiqueta), v);
@@ -109,64 +109,97 @@ function pintarIndicadores(energia) {
   cont.textContent = "";
   if (!hayDatos(energia)) {
     cont.appendChild(indicador("Energía", "—", "", energia?.no_disponible || "sin configurar"));
+    $("energia-origen").textContent = "";
+    pintarFlujo(null);
     return;
   }
   const r = energia.resumen;
+  $("energia-origen").textContent = r.origen_de_los_datos ? `· ${r.origen_de_los_datos}` : "";
   cont.append(
-    indicador("Produciendo", vatios(r.solar_w)),
-    indicador("Consumiendo", vatios(r.consumo_casa_w)),
+    indicador("Produciendo", vatios(r.solar_w), "", "sol", "sol"),
+    indicador("Consumiendo", vatios(r.consumo_casa_w), "", "la casa"),
     indicador(
-      r.red_estado === "exportando" ? "Vertiendo a la red" : "Tomando de la red",
+      r.red_estado === "exportando" ? "Vertiendo" : "Tomando",
       vatios(Math.abs(r.red_w)),
       "",
-      r.red_estado,
+      r.red_estado === "exportando" ? "a la red" : "de la red",
+      "red",
     ),
     r.bateria_soc_pct === null || r.bateria_soc_pct === undefined
-      ? indicador("Batería", "—", "", "sin lectura")
-      : indicador("Batería", String(Math.round(r.bateria_soc_pct)), "%", r.bateria_estado),
+      ? indicador("Batería", "—", "", "sin lectura", "bateria")
+      : indicador("Batería", String(Math.round(r.bateria_soc_pct)), "%", r.bateria_estado, "bateria"),
   );
+  pintarFlujo(r);
+}
+
+// El diagrama: sol, batería y red alrededor de la casa. Cada línea se anima
+// en el sentido en que va la energía, y se apaga cuando no pasa nada por ella.
+// Batería positiva = cargando (de la casa hacia ella); red positiva =
+// vertiendo (de la casa hacia la red). Es el mismo signo que en el resumen.
+function pintarFlujo(r) {
+  const linea = (id, w, haciaFuera) => {
+    const n = $(id);
+    const activa = Boolean(r) && Math.abs(Number(w) || 0) >= 50;
+    n.classList.toggle("activa", activa);
+    n.classList.toggle("atras", activa && haciaFuera);
+  };
+  if (!r) {
+    for (const id of ["cifra-sol", "cifra-casa", "cifra-bateria", "cifra-red"]) $(id).textContent = "—";
+    linea("linea-sol", 0, false); linea("linea-bateria", 0, false); linea("linea-red", 0, false);
+    return;
+  }
+  $("cifra-sol").textContent = vatios(r.solar_w);
+  $("cifra-casa").textContent = vatios(r.consumo_casa_w);
+  $("cifra-bateria").textContent = r.bateria_w ? vatios(Math.abs(r.bateria_w)) : "en reposo";
+  $("cifra-red").textContent = r.red_w ? vatios(Math.abs(r.red_w)) : "0 W";
+  linea("linea-sol", r.solar_w, false);
+  // La línea de la batería está dibujada desde la casa: "atrás" es hacia la casa.
+  linea("linea-bateria", r.bateria_w, Number(r.bateria_w) < 0);
+  linea("linea-red", r.red_w, r.red_estado !== "exportando");
 }
 
 function pintarBateria(energia) {
   if (!visible("tarjeta-bateria", hayDatos(energia))) return;
 
   const r = energia.resumen;
+  const estado = $("estado-bateria");
+  estado.textContent = "";
   // Sin lectura de SOC no se pinta un 0 %: se dice que no se sabe.
   if (r.bateria_soc_pct === null || r.bateria_soc_pct === undefined) {
     $("relleno-bateria").style.width = "0%";
-    $("estado-bateria").textContent = "Sin lectura de la carga de la batería.";
+    $("soc-bateria").textContent = "—";
+    estado.textContent = "Sin lectura de la carga de la batería.";
     return;
   }
   const soc = Math.max(0, Math.min(100, Number(r.bateria_soc_pct)));
   $("relleno-bateria").style.width = `${soc}%`;
+  const socNodo = $("soc-bateria");
+  socNodo.textContent = String(Math.round(soc));
+  socNodo.appendChild(el("small", null, "%"));
 
-  // El relleno del medidor lleva la severidad. El color nunca va solo: le
-  // acompaña siempre un punto y un texto.
-  let color = "var(--medidor)";
-  let texto = `${Math.round(soc)} %, ${r.bateria_estado}`;
-  if (soc < 10) { color = "var(--critico)"; texto += " — muy baja"; }
-  else if (soc < 20) { color = "var(--aviso)"; texto += " — baja"; }
-  // La pista es un paso mas claro de la MISMA rampa que el relleno, para que el
-  // estado se lea a lo largo de toda la barra. Se deriva del color del relleno
-  // en vez de fijar un hex por cada severidad.
+  // El relleno lleva la severidad. El color nunca va solo: le acompaña
+  // siempre un punto y un texto.
+  let color = "var(--cian)";
+  let texto = r.bateria_estado || "";
+  if (soc < 10) { color = "var(--critico)"; texto += " · muy baja"; }
+  else if (soc < 20) { color = "var(--aviso)"; texto += " · baja"; }
   $("relleno-bateria").style.background = color;
-  $("relleno-bateria").parentElement.style.background =
-    `color-mix(in oklab, ${color} 24%, var(--superficie))`;
 
-  const estado = $("estado-bateria");
-  estado.textContent = "";
   const punto = el("span", "punto");
   punto.style.background = color;
   estado.append(punto, document.createTextNode(texto));
-  if (r.bateria_salud_pct !== undefined) {
+  if (r.bateria_w) {
+    estado.append(document.createTextNode(` a ${vatios(Math.abs(r.bateria_w))}`));
+  }
+  if (r.bateria_salud_pct !== undefined && r.bateria_salud_pct !== null) {
     estado.append(document.createTextNode(` · salud ${Math.round(r.bateria_salud_pct)} %`));
   }
 }
 
 const SERIES = [
-  { clave: "solar_w", nombre: "Sol", color: "var(--serie-1)" },
-  { clave: "bateria_w", nombre: "Batería", color: "var(--serie-2)" },
-  { clave: "red_w", nombre: "Red", color: "var(--serie-3)" },
+  { clave: "solar_w", nombre: "Sol", color: "var(--oro)" },
+  { clave: "bateria_w", nombre: "Batería", color: "var(--cian)" },
+  { clave: "red_w", nombre: "Red", color: "var(--malva)" },
 ];
 
 function pintarMezcla(energia) {
@@ -309,12 +342,25 @@ function pintarExcedente(datos) {
   cont.appendChild(lista);
 }
 
-// Una fila de lista con punto de color, nombre que crece y valor a la derecha.
-function fila(color, texto, secundario) {
-  const li = el("li");
-  const punto = el("span", "punto");
-  punto.style.background = color;
-  li.append(punto, el("span", "crece", texto), el("span", "sec", secundario));
+// Una fila de lista: punto de color (o un nodo a la izquierda), nombre que
+// crece y, a la derecha, un texto o una pastilla de estado.
+function fila(color, texto, secundario, opciones = {}) {
+  const li = el("li", "fila");
+  if (opciones.izquierda) {
+    li.appendChild(opciones.izquierda);
+  } else if (color) {
+    const punto = el("span", "punto");
+    punto.style.background = color;
+    li.appendChild(punto);
+  }
+  li.appendChild(el("span", "crece", texto));
+  if (opciones.pastilla) {
+    li.appendChild(el("span", `pastilla ${opciones.pastilla}`, secundario));
+  } else if (opciones.derecha) {
+    li.appendChild(opciones.derecha);
+  } else if (secundario !== undefined) {
+    li.appendChild(el("span", "sec", secundario));
+  }
   return li;
 }
 
@@ -330,9 +376,9 @@ function pintarDispositivos(lista) {
   const ul = $("dispositivos");
   ul.textContent = "";
   for (const d of lista) {
-    const como = ESTADO_APARATO.get(d.encendido)
-      || { color: "var(--linea)", texto: d.categoria || "" };
-    ul.appendChild(fila(como.color, d.nombre, como.texto));
+    if (d.encendido === true) ul.appendChild(fila(null, d.nombre, "encendido", { pastilla: "bien" }));
+    else if (d.encendido === false) ul.appendChild(fila(null, d.nombre, "apagado", { pastilla: "neutra" }));
+    else ul.appendChild(fila(null, d.nombre, d.categoria || "", { pastilla: "neutra" }));
   }
 }
 
@@ -353,48 +399,67 @@ function pintarCasa(casa) {
     return;
   }
 
-  pintarLista("tarjeta-presencia", "presencia", casa.presencia, (p) =>
-    fila(p.en_casa ? "var(--bien)" : "var(--tinta-apagada)", p.nombre, p.en_casa ? "en casa" : "fuera"));
+  pintarLista("tarjeta-presencia", "presencia", casa.presencia, (p) => {
+    const avatar = el("span", p.en_casa ? "avatar en-casa" : "avatar", (p.nombre || "?").slice(0, 1).toUpperCase());
+    return fila(null, p.nombre, p.en_casa ? "en casa" : "fuera",
+      { izquierda: avatar, pastilla: p.en_casa ? "bien" : "neutra" });
+  });
 
   // Un acceso abierto o sin llave es lo unico del panel que pide atencion.
   pintarLista("tarjeta-accesos", "accesos", casa.accesos, (a) =>
-    fila(a.abierto ? "var(--aviso)" : "var(--bien)", a.nombre, a.estado));
+    fila(null, a.nombre, a.estado, { pastilla: a.abierto ? "aviso" : "bien" }));
 
   const luces = casa.luces;
   if (visible("tarjeta-luces", luces && luces.total > 0)) {
     const n = luces.encendidas.length;
-    $("luces-resumen").textContent = n
-      ? `${n} de ${luces.total} encendidas` : `Todas apagadas (${luces.total})`;
-    const ul = $("luces");
-    ul.textContent = "";
-    for (const nombre of luces.encendidas) ul.appendChild(fila("var(--aviso)", nombre, "encendida"));
+    $("luces-resumen").textContent = `${n} de ${luces.total} encendidas`;
+    const chips = $("luces");
+    chips.textContent = "";
+    for (const nombre of luces.encendidas) chips.appendChild(el("span", "chip", nombre));
+    $("luces-vacio").classList.toggle("oculto", n > 0);
   }
 
   pintarLista("tarjeta-persianas", "persianas", casa.persianas, (p) => {
-    const abierta = p.posicion !== null && p.posicion !== undefined ? p.posicion > 0 : p.estado !== "cerrada";
-    const detalle = p.posicion !== null && p.posicion !== undefined ? `${p.estado} · ${p.posicion} %` : p.estado;
-    return fila(abierta ? "var(--serie-1)" : "var(--tinta-apagada)", p.nombre, detalle);
+    const conPosicion = p.posicion !== null && p.posicion !== undefined;
+    if (!conPosicion) {
+      return fila(null, p.nombre, p.estado, { pastilla: p.estado === "cerrada" ? "neutra" : "cian" });
+    }
+    const barra = el("span", "barrita");
+    const dentro = el("i");
+    dentro.style.width = `${Math.max(0, Math.min(100, Number(p.posicion)))}%`;
+    barra.appendChild(dentro);
+    const derecha = el("span", "sec", `${Math.round(p.posicion)} %`);
+    const li = fila(null, p.nombre, undefined, { derecha: barra });
+    li.appendChild(derecha);
+    return li;
   });
 
   pintarLista("tarjeta-clima", "clima", casa.clima, (c) => {
-    const partes = [];
-    if (c.actual !== null && c.actual !== undefined) partes.push(`${c.actual} °C`);
-    if (c.objetivo !== null && c.objetivo !== undefined) partes.push(`objetivo ${c.objetivo} °C`);
-    partes.push(c.modo);
-    const activo = !["off", "apagada", "en reposo"].includes(c.modo);
-    return fila(activo ? "var(--serie-2)" : "var(--tinta-apagada)", c.nombre, partes.join(" · "));
+    const grados = el("span", "grados");
+    if (c.actual !== null && c.actual !== undefined) {
+      grados.textContent = `${Number(c.actual).toLocaleString("es-ES", { maximumFractionDigits: 1 })}°`;
+    } else {
+      grados.textContent = "—";
+    }
+    if (c.objetivo !== null && c.objetivo !== undefined) {
+      grados.appendChild(el("small", null, ` → ${c.objetivo}°`));
+    }
+    const apagado = ["off", "apagada", "en reposo"].includes(c.modo);
+    const li = fila(null, c.nombre, c.modo, { pastilla: apagado ? "neutra" : "cian" });
+    li.insertBefore(grados, li.lastChild);
+    return li;
   });
 
   // Una tarjeta por sistema declarado en `panel:` (coche, agua, spa, riego...).
   const cont = $("sistemas");
   cont.textContent = "";
   for (const s of casa.sistemas || []) {
-    const tarjeta = el("div", "tarjeta");
+    const tarjeta = el("section", "tarjeta");
     tarjeta.appendChild(el("h2", null, s.titulo));
     const ul = el("ul");
     for (const l of s.lineas) {
-      ul.appendChild(fila(l.valor === "sin dato" || l.valor === "sin conexion"
-        ? "var(--linea)" : "var(--tinta-apagada)", l.nombre, l.valor));
+      const sinDato = l.valor === "sin dato" || l.valor === "sin conexion";
+      ul.appendChild(fila(null, l.nombre, l.valor, { pastilla: sinDato ? "neutra" : undefined }));
     }
     tarjeta.appendChild(ul);
     cont.appendChild(tarjeta);
@@ -409,14 +474,16 @@ function pintarMusica(lista) {
   const ul = $("musica");
   ul.textContent = "";
   for (const m of lista) {
-    const nombre = m.zona ? `${m.reproductor} · ${m.zona}` : m.reproductor;
+    const nombre = m.zona && m.zona !== m.reproductor.toLowerCase() ? `${m.reproductor} · ${m.zona}` : m.reproductor;
     if (m.error) {
-      ul.appendChild(fila("var(--linea)", nombre, "no responde"));
+      ul.appendChild(fila(null, nombre, "no responde", { pastilla: "neutra" }));
     } else if (m.estado === "play" || m.estado === "stream") {
+      const ondas = el("span", "sonando");
+      ondas.append(el("i"), el("i"), el("i"));
       const que = [m.titulo, m.artista].filter(Boolean).join(" — ") || m.servicio || "sonando";
-      ul.appendChild(fila("var(--bien)", nombre, que));
+      ul.appendChild(fila(null, nombre, que, { izquierda: ondas }));
     } else {
-      ul.appendChild(fila("var(--tinta-apagada)", nombre, "en silencio"));
+      ul.appendChild(fila(null, nombre, "en silencio", { pastilla: "neutra" }));
     }
   }
 }
@@ -437,14 +504,17 @@ function pintarRed(red) {
     const s = red[clave];
     if (!s) continue;
     const bien = s.estado === "ok";
-    let detalle = bien ? "bien" : (s.estado || "?");
-    if (clave === "wan" && bien && s.latencia_ms !== undefined && s.latencia_ms !== null) {
-      detalle = `bien · ${s.latencia_ms} ms`;
+    let detalle = "";
+    if (clave === "wan" && s.latencia_ms !== undefined && s.latencia_ms !== null) {
+      detalle = `${s.latencia_ms} ms`;
     } else if (s.usuarios !== undefined && s.usuarios !== null) {
-      detalle = `${bien ? "bien" : detalle} · ${s.usuarios} conectados`;
+      detalle = `${s.usuarios} conectados`;
     }
     if (s.caidos) detalle += ` · ${s.caidos} caídos`;
-    ul.appendChild(fila(bien ? "var(--bien)" : "var(--critico)", etiqueta, detalle));
+    const li = fila(null, etiqueta, bien ? "bien" : (s.estado || "?"),
+      { pastilla: bien ? "bien" : "critico" });
+    if (detalle) li.insertBefore(el("span", "sec", detalle), li.lastChild);
+    ul.appendChild(li);
   }
 }
 
@@ -458,7 +528,8 @@ async function pintarCamaras(camaras) {
     const fig = el("figure");
     const img = el("img");
     img.alt = `Cámara ${c.nombre}`;
-    const pie = el("figcaption", null, c.zona ? `${c.nombre} · ${c.zona}` : c.nombre);
+    const zonaDistinta = c.zona && c.zona.toLowerCase() !== c.nombre.toLowerCase();
+    const pie = el("figcaption", null, zonaDistinta ? `${c.nombre} · ${c.zona}` : c.nombre);
     fig.append(img, pie);
     cont.appendChild(fig);
     // Fetch en vez de src directo: la imagen necesita la cabecera del token.
@@ -471,12 +542,20 @@ async function pintarCamaras(camaras) {
   }
 }
 
+// El saludo: por la hora del dia y, si el backend sabe quien mira, con su nombre.
+function saludo(quien) {
+  const h = new Date().getHours();
+  const base = h < 6 ? "Buenas noches" : h < 14 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
+  return quien ? `${base}, ${quien}` : base;
+}
+
 // --- Ciclo ------------------------------------------------------------------
 
 async function refrescar() {
   try {
     const datos = await (await pedir("api/panel")).json();
-    $("momento").textContent = `actualizado a las ${datos.momento}`;
+    $("momento").textContent = datos.momento;
+    $("saludo").textContent = saludo(datos.quien);
     pintarIndicadores(datos.energia);
     pintarBateria(datos.energia);
     pintarMezcla(datos.energia);
@@ -543,9 +622,13 @@ $("tema").addEventListener("click", () => {
   raiz.setAttribute("data-theme", oscuro ? "light" : "dark");
 });
 
+$("mensaje").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("enviar").click(); }
+});
 $("enviar").addEventListener("click", async () => {
   const mensaje = $("mensaje").value.trim();
   if (!mensaje) return;
+  $("respuesta").classList.add("con-texto");
   $("respuesta").textContent = "Pensando…";
   try {
     const r = await pedir("chat", {

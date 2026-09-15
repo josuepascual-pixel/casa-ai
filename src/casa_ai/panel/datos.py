@@ -69,6 +69,10 @@ async def recopilar(ctx: Contexto) -> dict[str, Any]:
 
     datos: dict[str, Any] = await reunir(**tareas)
     datos["momento"] = ahora(ctx.settings).strftime("%H:%M:%S")
+    # Para el saludo: solo si es una persona declarada (no «http sin registrar»).
+    persona = ctx.persona
+    declarada = persona is not None and persona in ctx.inventario.personas
+    datos["quien"] = persona.nombre if declarada else None
     # A un nino no se le listan camaras: ni los nombres. El endpoint de la
     # captura lo rechaza ademas por su cuenta.
     datos["camaras"] = [] if ctx.es_nino else [
