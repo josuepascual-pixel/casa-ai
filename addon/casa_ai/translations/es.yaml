@@ -1,0 +1,93 @@
+configuration:
+  anthropic_api_key:
+    name: Clave de la API de Anthropic
+    description: La clave "sk-ant-…" de console.anthropic.com. Es el cerebro del agente.
+  modelo:
+    name: Modelo de Claude
+    description: Dejalo en claude-opus-5 salvo que sepas por que cambiarlo.
+  esfuerzo:
+    name: Esfuerzo de razonamiento
+    description: high va bien para la casa. xhigh piensa mas y cuesta mas.
+  telegram_token:
+    name: Token del bot de Telegram
+    description: Lo da @BotFather al crear el bot.
+  telegram_chats_autorizados:
+    name: Chats de Telegram autorizados
+    description: Tu chat_id (y el de quien quieras), separados por comas. Vacio = el bot no atiende a nadie. Escribele al bot y mira el registro del complemento; te dira tu chat_id.
+  api_token:
+    name: Token del API y del panel
+    description: Una contrasena larga que te inventes. Es la que pide el panel web. Sin ella los endpoints se sirven cerrados.
+  unifi_host:
+    name: IP de la consola UniFi
+    description: La del Cloud Key o el Dream Machine.
+  unifi_usuario:
+    name: Usuario local de UniFi
+    description: Una cuenta LOCAL del controlador, no la de ui.com.
+  unifi_password:
+    name: Contrasena de UniFi
+  unifi_verificar_tls:
+    name: Verificar el certificado de UniFi
+    description: Dejalo activado. Las consolas traen certificado autofirmado; expórtalo y ponlo en la casilla de abajo en vez de desactivar esto.
+  unifi_ca_bundle:
+    name: Ruta al certificado de la consola
+    description: Opcional. Un fichero .pem dentro de /config del complemento.
+  sungrow_host:
+    name: IP del registrador Sungrow
+    description: La del Logger1000 (dentro del COM100D) o del dongle WiNet-S. Con una planta declarada y UniFi configurado puedes dejarla vacia; el agente encuentra el registrador solo.
+  sungrow_mac:
+    name: MAC del registrador Sungrow
+    description: Opcional. Sin IP ni MAC, el agente prueba por Modbus todos los equipos Sungrow que UniFi ve y se queda con el registrador. Con MAC, busca esa.
+  sungrow_puerto:
+    name: Puerto Modbus
+  sungrow_slave_id:
+    name: Direccion Modbus del inversor
+  sungrow_max_potencia_w:
+    name: Tope de potencia de bateria (W)
+    description: Limite de seguridad. El agente no podra ordenar mas potencia que esta.
+  energia_origen:
+    name: De donde se lee la energia
+    description: auto elige Modbus si hay registrador, y si no los sensores de Home Assistant.
+  excedente_soc_minimo:
+    name: Bateria minima para contar excedente (%)
+  excedente_margen_w:
+    name: Margen de excedente (W)
+    description: Vatios que se dejan sin usar para no pasar a importar por una nube.
+  knx_habilitado:
+    name: Bus KNX directo
+    description: Solo para direcciones que Home Assistant no expone. Lo normal es dejarlo apagado y usar la integracion KNX de Home Assistant.
+  knx_gateway_ip:
+    name: IP del router KNX/IP
+    description: La del Zennio u otro router KNX/IP.
+  knx_gateway_puerto:
+    name: Puerto KNX/IP
+  whatsapp_token:
+    name: Token de WhatsApp Cloud API
+  whatsapp_phone_number_id:
+    name: ID del numero de WhatsApp
+  whatsapp_verify_token:
+    name: Token de verificacion del webhook
+  whatsapp_app_secret:
+    name: Secreto de la app de Meta
+    description: Obligatorio si usas WhatsApp. Sin el no se puede comprobar que los mensajes vienen de Meta.
+  whatsapp_numeros_autorizados:
+    name: Numeros de WhatsApp autorizados
+    description: En formato internacional sin +, separados por comas.
+  elevenlabs_api_key:
+    name: Clave de ElevenLabs
+    description: Para la voz de salida. Opcional hasta que se conecte la voz por los HomePods.
+  tts_entidad:
+    name: Entidad de texto a voz
+    description: La de Home Assistant que lleva la voz de Jarvis, p. ej. tts.elevenlabs. Sin ella el agente no habla por los altavoces.
+  rutinas_altavoz:
+    name: Altavoz del informe de la manana
+    description: Un media_player de Home Assistant (o un alias del inventario) por el que se lee el informe de las 8. Solo el informe.
+  whisper_modelo:
+    name: Modelo de transcripcion de voz
+    description: small va bien. medium entiende mejor y tarda mas.
+  zona_horaria:
+    name: Zona horaria de la casa
+  log_level:
+    name: Nivel de registro
+  exigir_confirmacion:
+    name: Confirmar acciones de riesgo
+    description: Dejalo activado. Desactivarlo ejecuta bateria, wifi y bus KNX sin preguntar.

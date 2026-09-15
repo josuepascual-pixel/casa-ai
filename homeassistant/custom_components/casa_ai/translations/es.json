@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Casa AI (Jarvis)",
+        "description": "La URL del backend y el token del API (API_TOKEN del complemento).",
+        "data": {
+          "url": "URL del backend",
+          "token": "Token del API"
+        }
+      }
+    },
+    "error": {
+      "token_incorrecto": "El token no es el API_TOKEN del backend.",
+      "no_responde": "No se llega al backend en esa URL."
+    },
+    "abort": {
+      "already_configured": "Ese backend ya esta configurado."
+    }
+  }
+}

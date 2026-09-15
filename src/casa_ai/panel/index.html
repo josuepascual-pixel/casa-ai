@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Casa</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Ctext y=%2713%27 font-size=%2713%27%3E%E2%98%80%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<style>
+  /* Paleta validada con el validador de la guia de visualizacion:
+     pasa las seis comprobaciones en claro y oscuro. El aqua queda por debajo
+     de 3:1 sobre la superficie clara, asi que la barra lleva etiquetas
+     visibles y vista de tabla, que es el relevo que exige esa regla. */
+  /* Cada token se declara UNA vez con sus dos valores. La paleta oscura
+     estaba duplicada literalmente entre el @media y el [data-theme="dark"]:
+     cambiar un color de serie en oscuro obligaba a editar los dos bloques y
+     nada avisaba si solo se editaba uno.
+
+     `light-dark()` elige por `color-scheme`, asi que el boton de tema solo
+     tiene que cambiar ese, y el sistema manda cuando nadie ha elegido. */
+  :root {
+    color-scheme: light dark;
+    --plano:        light-dark(#f9f9f7, #0d0d0d);
+    --superficie:   light-dark(#fcfcfb, #1a1a19);
+    --tinta:        light-dark(#0b0b0b, #ffffff);
+    --tinta-2:      light-dark(#52514e, #c3c2b7);
+    --tinta-apagada:#898781;
+    --linea:        light-dark(#e1e0d9, #2c2c2a);
+    --borde:        light-dark(rgba(11,11,11,0.10), rgba(255,255,255,0.10));
+    --serie-1:      light-dark(#2a78d6, #3987e5);  /* sol     */
+    --serie-2:      light-dark(#eb6834, #d95926);  /* bateria */
+    --serie-3:      light-dark(#1baf7a, #199e70);  /* red     */
+    --medidor:      light-dark(#2a78d6, #3987e5);
+    --medidor-pista:light-dark(#cde2fb, #184f95);
+    /* Los de severidad no cambian: el rojo y el ambar tienen que significar lo
+       mismo en los dos temas. */
+    --bien:         #0ca30c;
+    --aviso:        #fab219;
+    --critico:      #d03b3b;
+  }
+  :root[data-theme="light"] { color-scheme: light; }
+  :root[data-theme="dark"]  { color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding-block: 20px; padding-inline: 16px;
+    background: var(--plano); color: var(--tinta);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .envoltura { max-width: 960px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+           margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  .momento { color: var(--tinta-apagada); font-size: 13px; }
+  .acciones { margin-left: auto; display: flex; gap: 8px; }
+  button {
+    font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--borde); background: var(--superficie);
+    color: var(--tinta-2);
+  }
+  button:hover { color: var(--tinta); }
+
+  .tarjeta {
+    background: var(--superficie); border: 1px solid var(--borde);
+    border-radius: 12px; padding: 16px; margin-bottom: 16px;
+  }
+  .tarjeta h2 {
+    font-size: 13px; font-weight: 600; color: var(--tinta-2);
+    margin: 0 0 14px; text-transform: none;
+  }
+
+  /* --- Fila de indicadores ------------------------------------------- */
+  .indicadores { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 640px) { .indicadores { grid-template-columns: repeat(2, 1fr); } }
+  .indicador .etiqueta { color: var(--tinta-2); font-size: 13px; }
+  .indicador .valor { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .indicador .unidad { font-size: 14px; font-weight: 400; color: var(--tinta-2); }
+  .indicador .pie { font-size: 12px; color: var(--tinta-apagada); }
+
+  /* --- Medidor de bateria -------------------------------------------- */
+  /* Pista = paso mas claro de la misma rampa que el relleno, para que el
+     estado se lea a lo largo de toda la barra. */
+  .pista {
+    height: 20px; border-radius: 4px; background: var(--medidor-pista);
+    overflow: hidden;
+  }
+  .relleno {
+    height: 100%; background: var(--medidor);
+    border-radius: 0 4px 4px 0; transition: width .4s ease;
+  }
+  .estado { display: flex; align-items: center; gap: 6px; font-size: 13px;
+            color: var(--tinta-2); margin-top: 8px; }
+  .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+  /* --- Barra de mezcla apilada ---------------------------------------- */
+  /* 2px de hueco en el color de la superficie separando los segmentos, y
+     extremo de dato redondeado solo en la punta. Grosor maximo 24px. */
+  .apilada { display: flex; gap: 2px; height: 24px; }
+  .segmento {
+    position: relative; min-width: 3px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: #fff;
+  }
+  .segmento:first-child { border-radius: 4px 0 0 4px; }
+  .segmento:last-child  { border-radius: 0 4px 4px 0; }
+  .segmento:only-child  { border-radius: 4px; }
+  .segmento:focus-visible, .segmento:hover { filter: brightness(1.12); outline: none; }
+  .leyenda { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .clave { display: flex; align-items: center; gap: 6px; font-size: 13px;
+           color: var(--tinta-2); }
+  .clave i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .clave b { color: var(--tinta); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--linea); }
+  th { color: var(--tinta-2); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { padding: 8px 0; border-bottom: 1px solid var(--linea);
+       display: flex; gap: 10px; align-items: center; }
+  li:last-child { border-bottom: 0; }
+  li .crece { flex: 1; min-width: 0; }
+  li .sec { color: var(--tinta-apagada); font-size: 12px; }
+  .camaras { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .camaras figure { margin: 0; }
+  .camaras img { width: 100%; border-radius: 8px; display: block;
+                 background: var(--linea); aspect-ratio: 16/9; object-fit: cover; }
+  .camaras figcaption { font-size: 13px; color: var(--tinta-2); margin-top: 6px; }
+
+  #chat textarea { width: 100%; font: inherit; padding: 10px; border-radius: 8px;
+                   border: 1px solid var(--borde); background: var(--plano);
+                   color: var(--tinta); resize: vertical; }
+  #respuesta { white-space: pre-wrap; margin-top: 12px; color: var(--tinta-2); }
+
+  #pista-flotante {
+    position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
+    background: var(--superficie); border: 1px solid var(--borde);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 10;
+  }
+  #pista-flotante .v { font-weight: 600; font-size: 15px; color: var(--tinta); }
+  #pista-flotante .n { color: var(--tinta-2); display: flex; align-items: center; gap: 6px; }
+  #pista-flotante .n s { width: 12px; height: 2px; text-decoration: none; flex: none; }
+  .oculto { display: none !important; }
+  .aviso { color: var(--tinta-apagada); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="envoltura">
+  <header>
+    <h1>Casa</h1>
+    <span class="momento" id="momento"></span>
+    <div class="acciones">
+      <button id="tema" title="Cambiar tema">◐</button>
+      <button id="salir" class="oculto">Olvidar token</button>
+    </div>
+  </header>
+
+  <div id="acceso" class="tarjeta oculto">
+    <h2>Token de acceso</h2>
+    <p class="aviso">El panel solo lee. El token es el de <code>API_TOKEN</code>;
+      se guarda en esta pestaña y se olvida al cerrarla.</p>
+    <input id="token" type="password" placeholder="API_TOKEN"
+           style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--borde);
+                  background:var(--plano);color:var(--tinta);font:inherit">
+    <button id="entrar" style="margin-top:10px">Entrar</button>
+    <p id="error-acceso" class="aviso"></p>
+  </div>
+
+  <main id="contenido" class="oculto">
+    <div class="tarjeta">
+      <h2>Ahora mismo</h2>
+      <div class="indicadores" id="indicadores"></div>
+    </div>
+
+    <div class="tarjeta" id="tarjeta-bateria">
+      <h2>Batería</h2>
+      <div class="pista"><div class="relleno" id="relleno-bateria" style="width:0%"></div></div>
+      <div class="estado" id="estado-bateria"></div>
+    </div>
+
+    <div class="tarjeta" id="tarjeta-mezcla">
+      <h2>De dónde sale lo que consume la casa</h2>
+      <div class="apilada" id="apilada" role="img" aria-label="Mezcla de suministro"></div>
+      <div class="leyenda" id="leyenda"></div>
+      <p class="aviso" id="nota-mezcla"></p>
+      <button id="ver-tabla" style="margin-top:4px">Ver como tabla</button>
+      <div id="tabla-mezcla" class="oculto" style="margin-top:12px"></div>
+    </div>
+
+    <div class="tarjeta oculto" id="tarjeta-excedente">
+      <h2>Excedente solar</h2>
+      <div id="excedente"></div>
+    </div>
+
+    <div class="tarjeta oculto" id="tarjeta-dispositivos">
+      <h2>Aparatos</h2>
+      <ul id="dispositivos"></ul>
+    </div>
+
+    <div class="tarjeta oculto" id="tarjeta-camaras">
+      <h2>Cámaras</h2>
+      <div class="camaras" id="camaras"></div>
+    </div>
+
+    <div class="tarjeta" id="chat">
+      <h2>Preguntar al agente</h2>
+      <textarea id="mensaje" rows="2" placeholder="¿puedo poner la lavadora?"></textarea>
+      <button id="enviar" style="margin-top:10px">Enviar</button>
+      <div id="respuesta"></div>
+    </div>
+  </main>
+</div>
+
+<div id="pista-flotante"></div>
+<script src="/panel.js"></script>
+</body>
+</html>

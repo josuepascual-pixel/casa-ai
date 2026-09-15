@@ -1,0 +1,108 @@
+# Inventario de una casa real (nombres de ejemplo). Copiar a config.yaml del complemento e ir
+# descomentando cada seccion a medida que su sistema entra (ver
+# docs/PUESTA_EN_MARCHA.md). Aqui NO van tokens ni contrasenas.
+
+asistente:
+  nombre: Jarvis
+  tratamiento: usted
+
+# Los chat_id salen en el Registro del complemento la primera vez que cada
+# uno escribe al bot. Leo no tiene Telegram: habla por el satelite de su
+# cuarto, y su device_id sale en Home Assistant cuando se instale.
+personas:
+  - nombre: Josue
+    nivel: dueno
+    telegram: ["PON_AQUI_TU_CHAT_ID"]
+  - nombre: Ana
+    nivel: adulto
+    telegram: ["PON_AQUI_EL_CHAT_ID_DE_LAURA"]
+  - nombre: Leo
+    nivel: nino
+    dispositivos: []          # el device_id del satelite de su cuarto
+
+# Por los puntos de acceso y switches que hay en UniFi.
+zonas:
+  - salon
+  - comedor
+  - cocina
+  - despacho
+  - suite
+  - bano suite
+  - vestidor
+  - dormitorio leo
+  - sala de juegos
+  - cine
+  - gym
+  - lavadero
+  - pasillo
+  - barbacoa
+  - exterior
+  - piscina
+
+# Las tres G6 Instant. El id_protect lo da `python -m casa_ai.verificar`.
+camaras:
+  - nombre: Cine
+    zona: cine
+  - nombre: Leo
+    zona: dormitorio leo
+  - nombre: Sala de juegos
+    zona: sala de juegos
+
+# Los reproductores los encuentra `python -m casa_ai.descubrir` y escribe
+# este bloque con sus IP. Por los nombres cableados de UniFi, cabe esperar
+# uno en salon, comedor, cine, suite, gym y exterior.
+bluos: []
+
+# Altavoces por los que Jarvis habla (voz_hablar y el informe de las 8).
+# Los entity_id salen tras la integracion Apple TV de Home Assistant.
+alias_entidades: {}
+  # cocina: media_player.homepod_cocina
+  # despacho: media_player.homepod_despacho
+  # sala de juegos: media_player.homepod_sala_de_juegos
+  # cuarto de leo: media_player.homepod_dormitorio_eros
+  # bano suite: media_player.homepod_bano_suite
+  # salon: media_player.salon
+  # gym: media_player.gym
+
+# Aparatos con nombre, consumo y sentido. Descomentar cada uno cuando su
+# integracion este instalada y sustituir el entity_id por el real (se busca
+# con "Jarvis, busca la entidad del cargador del coche").
+dispositivos: []
+  # - nombre: cargador del coche
+  #   categoria: coche
+  #   entidad: switch.wallbox_pause_resume
+  #   consumo_w: 7400
+  #   excedente: true
+  #   notas: cargar con excedente entre semana; los fines de semana da igual
+  # - nombre: spa
+  #   categoria: spa
+  #   entidad: climate.spa
+  #   consumo_w: 3000
+  #   excedente: true
+  # - nombre: bomba de la piscina
+  #   categoria: piscina
+  #   entidad: switch.bomba_piscina
+  #   consumo_w: 1100
+  #   excedente: true
+  #   notas: no antes de las 11
+  # - nombre: lavadora
+  #   categoria: electrodomestico
+  #   entidad: sensor.lavadora_estado
+  #   consumo_w: 2000
+  # - nombre: descalcificadora
+  #   categoria: agua
+  #   entidad: sensor.ecowater_dias_de_sal
+  #   notas: solo lectura; avisar cuando queden menos de 10 dias de sal
+
+scripts_permitidos: []
+
+# Al final, con el complemento en marcha y el sondeo hecho:
+# planta:
+#   inversor: {unit: 1}
+#   contador: {unit: 3}
+#   bateria: {unit: 2}
+
+notas_casa: |
+  Casa unifamiliar con planta fotovoltaica de 51 kWp y bateria de 229 kWh.
+  Familia: Josue, Ana y Leo (8 anos). La camara del cuarto de Leo solo
+  la ven los adultos.

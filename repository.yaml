@@ -1,0 +1,6 @@
+# Este repositorio es tambien una tienda de complementos de Home Assistant.
+# En HA: Ajustes -> Complementos -> Tienda -> (menu) -> Repositorios -> pegar
+# la URL de este repo. El complemento esta en addon/casa_ai.
+name: Casa AI
+url: https://github.com/josuepascual-pixel/casa-ai
+maintainer: Josue Pascual

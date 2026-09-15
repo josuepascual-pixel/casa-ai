@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+config/config.yaml
+data/
+*.sqlite3
+.pytest_cache/
+.ruff_cache/
+# Artefactos de cobertura. `.coverage` es un SQLite binario: se colo una vez en
+# un `git add -A` y no tiene nada que hacer en el repo.
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+dist/
+build/
+.DS_Store

@@ -1,0 +1,12 @@
+{
+  "domain": "casa_ai",
+  "name": "Casa AI (Jarvis)",
+  "codeowners": ["@josuepascual-pixel"],
+  "config_flow": true,
+  "dependencies": ["conversation"],
+  "documentation": "https://github.com/josuepascual-pixel/casa-ai/blob/main/docs/VOZ.md",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "0.1.0"
+}

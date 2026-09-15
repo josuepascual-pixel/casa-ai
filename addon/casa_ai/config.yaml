@@ -1,0 +1,96 @@
+# Complemento de Home Assistant. Ver DOCS.md para la instalacion.
+#
+# Las claves de `options` son EXACTAMENTE los nombres de campo de
+# `casa_ai.settings.Settings`: run.sh las exporta en mayusculas como variables
+# de entorno sin ninguna tabla intermedia, y hay un test que lo comprueba.
+# Lo que el complemento resuelve por su cuenta (Home Assistant, rutas de
+# datos, red) no aparece aqui a proposito.
+name: Casa AI
+version: "0.1.0"
+slug: casa_ai
+description: Agente conversacional que controla la casa por Telegram o WhatsApp
+url: https://github.com/josuepascual-pixel/casa-ai
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: services
+boot: auto
+# El bus KNX (multicast y tunel con ruta de vuelta), el descubrimiento de
+# BluOS y el Modbus del registrador van sin NAT: mismo segmento que la casa.
+host_network: true
+# Da acceso a la API de Home Assistant sin token manual: run.sh usa el del
+# Supervisor. Es la unica credencial que el usuario NO tiene que crear.
+homeassistant_api: true
+map:
+  - addon_config:rw
+options:
+  anthropic_api_key: ""
+  modelo: claude-opus-5
+  esfuerzo: high
+  telegram_token: ""
+  telegram_chats_autorizados: ""
+  api_token: ""
+  unifi_host: ""
+  unifi_usuario: ""
+  unifi_password: ""
+  unifi_verificar_tls: true
+  unifi_ca_bundle: ""
+  sungrow_host: ""
+  sungrow_mac: ""
+  sungrow_puerto: 502
+  sungrow_slave_id: 1
+  sungrow_max_potencia_w: 5000
+  energia_origen: auto
+  excedente_soc_minimo: 90
+  excedente_margen_w: 300
+  knx_habilitado: false
+  knx_gateway_ip: ""
+  knx_gateway_puerto: 3671
+  whatsapp_token: ""
+  whatsapp_phone_number_id: ""
+  whatsapp_verify_token: ""
+  whatsapp_app_secret: ""
+  whatsapp_numeros_autorizados: ""
+  elevenlabs_api_key: ""
+  tts_entidad: ""
+  rutinas_altavoz: ""
+  whisper_modelo: small
+  zona_horaria: Europe/Madrid
+  log_level: INFO
+  exigir_confirmacion: true
+schema:
+  anthropic_api_key: password
+  modelo: str
+  esfuerzo: list(low|medium|high|xhigh|max)
+  telegram_token: password
+  telegram_chats_autorizados: str
+  api_token: password
+  unifi_host: str?
+  unifi_usuario: str?
+  unifi_password: password?
+  unifi_verificar_tls: bool
+  unifi_ca_bundle: str?
+  sungrow_host: str?
+  sungrow_mac: str?
+  sungrow_puerto: port
+  sungrow_slave_id: int(1,247)
+  sungrow_max_potencia_w: int(100,200000)
+  energia_origen: list(auto|modbus|homeassistant)
+  excedente_soc_minimo: int(0,100)
+  excedente_margen_w: int(0,20000)
+  knx_habilitado: bool
+  knx_gateway_ip: str?
+  knx_gateway_puerto: port
+  whatsapp_token: password?
+  whatsapp_phone_number_id: str?
+  whatsapp_verify_token: password?
+  whatsapp_app_secret: password?
+  whatsapp_numeros_autorizados: str?
+  elevenlabs_api_key: password?
+  tts_entidad: str?
+  rutinas_altavoz: str?
+  whisper_modelo: list(tiny|base|small|medium|large-v3)
+  zona_horaria: str
+  log_level: list(DEBUG|INFO|WARNING|ERROR)
+  exigir_confirmacion: bool

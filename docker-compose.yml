@@ -1,0 +1,33 @@
+services:
+  casa-ai:
+    build:
+      context: .
+      args:
+        # false deja fuera la transcripcion de voz y adelgaza mucho la imagen.
+        # Util en equipos pequenos si te basta con texto.
+        CON_VOZ: "true"
+    container_name: casa-ai
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      # Solo localhost del host. Para alcanzarlo desde otro equipo de la red,
+      # cambialo a "8099:8099" y define API_TOKEN en .env: sin token los
+      # endpoints devuelven 503 a proposito.
+      - "127.0.0.1:8099:8099"
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/app/data
+    environment:
+      CONFIG_PATH: /app/config/config.yaml
+      DB_PATH: /app/data/casa_ai.sqlite3
+      # La hora del contenedor, para que los logs cuadren con la de la casa.
+      # Las marcas que ve el agente ya usan ZONA_HORARIA en cualquier caso.
+      TZ: ${ZONA_HORARIA:-Europe/Madrid}
+      # Dentro del contenedor hay que escuchar en todas las interfaces para que
+      # el mapeo de puertos funcione; quien limita el acceso es el `ports` de
+      # arriba, que solo expone localhost del host.
+      API_HOST: 0.0.0.0
+    # El bus KNX y el descubrimiento de BluOS van mejor sin NAT. Si activas
+    # network_mode: host, quita la seccion `ports` (son incompatibles) y pon
+    # KNX_ROUTE_BACK=false en .env.
+    # network_mode: host

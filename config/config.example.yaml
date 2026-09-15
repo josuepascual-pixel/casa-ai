@@ -1,0 +1,291 @@
+# Inventario fisico de la casa. Copia este fichero a config/config.yaml y
+# ajustalo. Aqui NO van tokens ni contrasenas: esos van en .env.
+#
+# Tras editarlo puedes recargarlo sin reiniciar:
+#   curl -X POST http://localhost:8099/recargar-inventario
+
+# ---------------------------------------------------------------------------
+# Quien es el asistente
+# ---------------------------------------------------------------------------
+# El caracter (sereno, formal, con algo de ironia seca) esta en el prompt y no
+# se configura. Lo que cambia por casa es el nombre y el trato: `usted` como
+# el original, o `tu`.
+asistente:
+  nombre: Jarvis
+  tratamiento: usted
+
+# ---------------------------------------------------------------------------
+# Quien puede hablar con la casa, y con que permisos
+# ---------------------------------------------------------------------------
+# La identidad es el canal: el chat de Telegram, el numero de WhatsApp o, en
+# su dia, el aparato desde el que se habla. Nunca la voz ni lo que diga el
+# texto. Niveles: `dueno` y `adulto` tienen todo; `nino` solo luces, musica,
+# persianas y cuanto sol hay: sin camaras, sin energia, sin red, sin acciones
+# con consecuencias. Un chat autorizado que no este aqui cuenta como nino.
+# Sin esta seccion, todo chat autorizado es adulto.
+#
+# personas:
+#   - nombre: Josue
+#     nivel: dueno
+#     telegram: ["123456789"]
+#   - nombre: Ana
+#     nivel: adulto
+#     telegram: ["987654321"]
+#   - nombre: Leo
+#     nivel: nino
+#     dispositivos: ["satelite-dormitorio-leo"]   # sin Telegram: tiene 8 anos
+
+zonas:
+  - salon
+  - cocina
+  - dormitorio
+  - terraza
+  - garaje
+
+# ---------------------------------------------------------------------------
+# Reproductores BluOS (Bluesound / NAD / Blue Note)
+# ---------------------------------------------------------------------------
+# Para encontrar sus IP: mira los clientes de UniFi, o prueba
+#   curl http://IP:11000/SyncStatus
+# El campo `zona` permite decir "pon musica en la cocina".
+bluos:
+  - nombre: Salon
+    host: 192.168.1.50
+    zona: salon
+  - nombre: Cocina
+    host: 192.168.1.51
+    zona: cocina
+
+# ---------------------------------------------------------------------------
+# Camaras
+# ---------------------------------------------------------------------------
+# Un identificador por sistema, y los dos son opcionales: declara el que
+# tengas. `camaras_listar` te los da la primera vez.
+#
+#   id_protect   el id de UniFi Protect (da eventos y estado de grabacion)
+#   entidad_ha   el entity_id `camera.` de Home Assistant (solo capturas, pero
+#                funciona con el backend fuera de casa)
+#
+# Con los dos declarados se usa Protect si esta alcanzable. El nombre en
+# castellano es lo que permite decir "mira la puerta".
+camaras:
+  - nombre: Puerta
+    id_protect: "REEMPLAZA_CON_EL_ID"
+    entidad_ha: camera.puerta
+    zona: entrada
+  - nombre: Garaje
+    id_protect: "REEMPLAZA_CON_EL_ID"
+    zona: garaje
+
+# ---------------------------------------------------------------------------
+# Energia leida via Home Assistant (alternativa a Modbus directo)
+# ---------------------------------------------------------------------------
+# Solo hace falta si NO puedes o no quieres conectar por Modbus al inversor.
+# Dos casos tipicos:
+#   - Home Assistant ya tiene ocupada la unica conexion Modbus del WiNet-S.
+#   - El backend no esta en la red de casa (por ejemplo, corriendo en la nube).
+#
+# Pon ENERGIA_ORIGEN=homeassistant en .env para forzar este camino.
+# Busca los entity_id con la herramienta casa_buscar_entidades.
+#
+# Los factor_* convierten unidades y arreglan signos: 1000 si el sensor da kW,
+# -1 si el signo esta al contrario del que espera el sistema (positivo = la
+# bateria carga, positivo = se exporta a la red).
+energia_ha:
+  solar: sensor.total_dc_power
+  bateria_potencia: sensor.battery_power
+  bateria_soc: sensor.battery_level
+  bateria_salud: sensor.battery_state_of_health
+  bateria_temperatura: sensor.battery_temperature
+  red: sensor.export_power
+  # consumo: sensor.load_power     # si falta, se deriva del balance
+  # factor_red: -1                 # descomenta si el signo sale al reves
+
+  # Control de bateria via HA. Sin estas tres, el sistema solo LEE la energia
+  # (y lo dira claramente en vez de fingir). Los nombres dependen de como
+  # tengas montada la integracion de Sungrow en Home Assistant.
+  # control_modo_ems: select.ems_mode
+  # control_comando: select.battery_forced_charge_discharge_cmd
+  # control_potencia: number.forced_max_battery_power
+  # Y los textos exactos de las opciones de esos select, tal como salen en HA:
+  # opcion_autoconsumo: "Self-consumption mode (default)"
+  # opcion_forzado: "Forced mode"
+  # opcion_cargar: "Forced charge"
+  # opcion_descargar: "Forced discharge"
+  # opcion_parar: "Stop (default)"
+
+# ---------------------------------------------------------------------------
+# Planta comercial por el Logger1000 (inversor de cadena + bateria + contador)
+# ---------------------------------------------------------------------------
+# Si tu instalacion NO es un inversor hibrido sino un inversor de cadena
+# (SG-CX) con un sistema de baterias ST y un contador, todos detras de un
+# Logger1000, declara esta seccion. Con ella, SUNGROW_HOST (o SUNGROW_MAC) es
+# el registrador, y cada equipo se lee por su id de esclavo (`unit`), que es
+# la direccion que el Logger le tiene asignada (se ve en su web, en la lista
+# de dispositivos, o con `python -m casa_ai.adapters.planta sondear`).
+#
+# Las direcciones de registro van en BASE 0 (la de pymodbus). Sungrow numera
+# desde 1 en su documento: resta uno. Janitza ya numera desde 0.
+#
+# Sin esta seccion, el adaptador es el del inversor hibrido SH.
+#
+# planta:
+#   inversor:
+#     unit: 1                    # mapa SG-CX de serie; no hay que declarar nada
+#   contador:
+#     unit: 3                    # Janitza UMG104 de serie: contrastar acumulados
+#                                # con iSolarCloud (`leer`), y si no cuadran,
+#                                # corregir aqui la senal que sea:
+#     # senales:
+#     #   import_total_kwh: {registro: 19076, tipo: f32, funcion: holding,
+#     #                      palabra_alta_primero: true, escala: 0.001}
+#   bateria:
+#     # host: 192.168.0.146      # si el controlador tiene IP propia
+#     unit: 2
+#     # La bateria ST no tiene mapa publico. Lo que se sepa (documento del
+#     # instalador o registros casados con iSolarCloud) se declara aqui con
+#     # estos nombres, y cualquier otro nombre sale en `crudo` para probarlo:
+#     senales:
+#       potencia_w: {registro: 100, tipo: i32}      # positivo = cargando
+#       soc_pct: {registro: 102, escala: 0.1}
+#       soh_pct: {registro: 103, escala: 0.1}
+#       temperatura_c: {registro: 104, tipo: i16, escala: 0.1}
+#     # Control: las escrituras de cada modo. Sin `ordenes` solo se lee, y la
+#     # herramienta de control no se ofrece al agente. Toda orden pasa por la
+#     # confirmacion de riesgo alto.
+#     # ordenes:
+#     #   autoconsumo: [{registro: 200, valor: 0}]
+#     #   cargar:      [{registro: 200, valor: 2}, {registro: 201, potencia_escala: 0.001}]
+#     #   descargar:   [{registro: 200, valor: 3}, {registro: 201, potencia_escala: 0.001}]
+#     #   parar:       [{registro: 200, valor: 1}]
+#   invertir_signo_red: false     # si iSolarCloud dice lo contrario que `leer`
+#   invertir_signo_bateria: false
+
+# ---------------------------------------------------------------------------
+# Scripts de Home Assistant que el agente puede ejecutar
+# ---------------------------------------------------------------------------
+# Un `script.` de HA ejecuta una secuencia arbitraria, asi que puede hacer lo
+# que la lista blanca de servicios prohibe: un script llamado "bienvenida"
+# podria abrir la cerradura. Por eso estan DENEGADOS salvo los que declares
+# aqui, con su entity_id exacto.
+#
+# Las escenas (`scene.`) si estan permitidas sin declarar, porque son un
+# conjunto estatico de estados. Aun asi: no metas cerraduras en una escena.
+scripts_permitidos: []
+  # - script.buenas_noches
+  # - script.modo_cine
+
+# ---------------------------------------------------------------------------
+# Aparatos de la casa
+# ---------------------------------------------------------------------------
+# Todo esto llega a traves de Home Assistant: instala su integracion y aqui
+# solo le das nombre y sentido. Ver docs/INTEGRACIONES.md para saber que
+# integracion hace falta para cada app que ya usas.
+#
+# `consumo_w` y `excedente` son los que hacen funcionar la herramienta
+# excedente_solar: sin ellos el agente no puede decidir que encender cuando
+# sobra sol. `prioridad` 1 va primero.
+#
+# Los entity_id de ejemplo son inventados: busca los tuyos con
+# casa_buscar_entidades o en Herramientas de desarrollo de Home Assistant.
+dispositivos:
+  - nombre: cargador del coche
+    categoria: cargador_vehiculo
+    entidad: switch.wallbox_carga
+    entidades:
+      potencia: sensor.wallbox_potencia_carga
+      corriente: number.wallbox_corriente_maxima
+      estado: sensor.wallbox_estado
+    consumo_w: 7400
+    excedente: true
+    prioridad: 2
+    notas: Wallbox del garaje. Admite regular la corriente, no solo encender y apagar.
+
+  - nombre: spa
+    categoria: spa
+    entidad: water_heater.spa
+    entidades:
+      temperatura: sensor.spa_temperatura_agua
+    consumo_w: 3000
+    excedente: true
+    prioridad: 3
+    notas: Calentar el spa con excedente sale gratis; con tarifa punta es caro.
+
+  - nombre: termo electrico
+    categoria: agua_caliente
+    entidad: switch.knx_termo_electrico
+    consumo_w: 2000
+    excedente: true
+    prioridad: 1
+    notas: Prioridad alta porque es el consumo mas facil de desplazar.
+
+  - nombre: lavadora
+    categoria: electrodomestico
+    entidad: switch.lavadora
+    entidades:
+      programa: sensor.lavadora_estado
+    consumo_w: 2200
+    excedente: true
+    prioridad: 4
+
+  - nombre: riego jardin
+    categoria: riego
+    entidad: switch.riego_jardin
+    consumo_w: 50
+    notas: Consumo despreciable, no es candidato a excedente.
+
+  - nombre: cerradura entrada
+    categoria: acceso
+    entidad: lock.nuki_entrada
+    notas: >
+      Solo se puede CERRAR desde aqui. Abrir por chat esta deliberadamente
+      fuera de la lista blanca de servicios.
+
+  - nombre: audio salon
+    categoria: audio
+    entidad: media_player.heos_salon
+    notas: Sistema HEOS, distinto del BluOS. Se controla con casa_accion.
+
+# ---------------------------------------------------------------------------
+# Alias de entidades de Home Assistant
+# ---------------------------------------------------------------------------
+# Atajos en lenguaje natural para no depender de que el agente acierte el
+# entity_id. Todo lo de ONNA llega aqui a traves de la integracion `knx` de
+# Home Assistant, asi que estos alias son la via normal de control.
+alias_entidades:
+  # Altavoces por los que Jarvis habla (voz_hablar y el informe de la manana):
+  # cocina: media_player.homepod_cocina
+  luz salon: light.knx_salon_general
+  luz cocina: light.knx_cocina
+  persiana salon: cover.knx_persiana_salon
+  clima salon: climate.knx_salon
+  termo: switch.knx_termo_electrico
+
+# ---------------------------------------------------------------------------
+# Direcciones de grupo KNX del sistema ONNA (acceso directo al bus)
+# ---------------------------------------------------------------------------
+# Solo para lo que Home Assistant no exponga. El agente NO puede escribir en
+# ninguna direccion que no este en esta lista: es la lista blanca del bus.
+#
+# `tipo_valor` es el DPT que entiende xknx: binary, percent, temperature,
+# 1byte_unsigned, 2byte_float... Debe coincidir con el datapoint real de ETS o
+# el valor se interpretara mal.
+knx:
+  - nombre: riego jardin
+    direccion: "2/1/10"
+    tipo_valor: binary
+    descripcion: Electrovalvula del riego del jardin
+  - nombre: temperatura exterior
+    direccion: "3/2/1"
+    tipo_valor: temperature
+    descripcion: Sonda exterior de la fachada norte
+    solo_lectura: true
+
+# ---------------------------------------------------------------------------
+# Notas libres que el agente tendra siempre presentes
+# ---------------------------------------------------------------------------
+notas_casa: |
+  La tarifa electrica tiene valle de 00:00 a 08:00 y punta de 10:00 a 14:00
+  y de 18:00 a 22:00.
+  La bomba de la piscina no debe arrancar antes de las 11:00.
+  El termo electrico consume 2 kW: solo tiene sentido con excedente solar.
