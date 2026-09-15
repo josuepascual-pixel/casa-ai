@@ -239,6 +239,10 @@ Honestamente:
 - **Nadie llama a la puerta en silencio.** Un chat no autorizado que escriba
   al bot se rechaza y el dueño recibe un aviso con su identificador, una vez
   por hora y por chat.
+- **Una configuración expuesta no se queda en el registro.** `/verificar`
+  cierra con los avisos de seguridad (API abierto a la red, confirmación
+  desactivada, HA por http, chats sin persona…), y si al arrancar hay
+  alguno, Jarvis se lo manda a los dueños por Telegram.
 - **Lo que el software no puede proteger está en `docs/RED.md`**: los
   aparatos de la casa no piden contraseña, y quien esté en la misma red puede
   hablarles sin pasar por Jarvis. La red de invitados aislada y una VLAN para
