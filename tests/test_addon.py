@@ -35,7 +35,7 @@ def test_lo_que_resuelve_el_complemento_no_esta_en_el_formulario() -> None:
     pisarlos y romper el acceso a Home Assistant o la persistencia."""
     opciones = set(_config()["options"])
     fijados = {"ha_url", "ha_token", "db_path", "config_path", "api_host", "api_clientes",
-               "knx_route_back"}
+               "api_confiar_en_ingress", "knx_route_back"}
     assert not (opciones & fijados)
     run = (ADDON / "run.sh").read_text("utf-8")
     for clave in fijados:

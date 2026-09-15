@@ -237,8 +237,11 @@ class Persona(BaseModel):
     privadas: list[str] = Field(default_factory=list)
 
     def responde_a(self, canal: str, usuario: str) -> bool:
+        # El panel por ingress y la voz comparten identidad: el usuario de
+        # Home Assistant (`usuario-<id>`), declarado una sola vez.
         identidades = {
-            "telegram": self.telegram, "whatsapp": self.whatsapp, "voz": self.dispositivos,
+            "telegram": self.telegram, "whatsapp": self.whatsapp,
+            "voz": self.dispositivos, "panel": self.dispositivos,
         }
         return usuario in identidades.get(canal, [])
 
@@ -484,6 +487,11 @@ class Settings(BaseSettings):
     # solo se abre desde dentro de Home Assistant, tras su login, y ningun
     # equipo de la casa ve el puerto aunque tenga el token.
     api_clientes: str = ""
+    # Fiarse del ingress de Home Assistant: una peticion que llega desde el
+    # Supervisor con la cabecera X-Ingress-Path viene de un usuario que ya ha
+    # hecho login en HA (y su segundo factor), y trae su id de usuario. Solo
+    # tiene sentido dentro del complemento, donde el Supervisor es quien es.
+    api_confiar_en_ingress: bool = False
 
     # --- Operacion ---
     config_path: Path = Path("config/config.yaml")

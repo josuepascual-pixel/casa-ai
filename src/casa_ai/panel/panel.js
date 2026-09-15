@@ -31,10 +31,11 @@ function olvidarToken() {
 // Rutas relativas a proposito: por el ingress de Home Assistant la pagina
 // vive bajo /api/hassio_ingress/<token>/, y una ruta absoluta se saldria.
 async function pedir(ruta, opciones = {}) {
-  const r = await fetch(ruta, {
-    ...opciones,
-    headers: { ...(opciones.headers || {}), Authorization: `Bearer ${token()}` },
-  });
+  // Sin token no se manda cabecera: por el ingress de Home Assistant el
+  // backend ya sabe quien es por el login de HA, y el token no hace falta.
+  const cabeceras = { ...(opciones.headers || {}) };
+  if (token()) cabeceras.Authorization = `Bearer ${token()}`;
+  const r = await fetch(ruta, { ...opciones, headers: cabeceras });
   if (r.status === 401) { olvidarToken(); throw new Error("token invalido"); }
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r;
@@ -377,12 +378,11 @@ async function refrescar() {
 
 async function entrar() {
   const valor = $("token").value.trim();
-  if (!valor) return;
-  guardarToken(valor);
+  if (valor) guardarToken(valor);
   try {
-    await pedir("/salud");
+    await pedir("salud");
   } catch (e) {
-    $("error-acceso").textContent = `No ha funcionado: ${e.message}`;
+    $("error-acceso").textContent = valor ? `No ha funcionado: ${e.message}` : "";
     return;
   }
   $("acceso").classList.add("oculto");
@@ -410,6 +410,9 @@ document.addEventListener("visibilitychange", () => {
 });
 
 $("entrar").addEventListener("click", entrar);
+// Por el ingress no hace falta token: se prueba a entrar directamente y, si
+// el backend pide token (401), se queda el formulario a la vista.
+entrar();
 $("token").addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
 $("salir").addEventListener("click", olvidarToken);
 $("ver-tabla").addEventListener("click", () => {

@@ -65,7 +65,9 @@ def inventario() -> Inventario:
 
 
 @contextmanager
-def app_de_prueba(monkeypatch, tmp_path: Path, **entorno: str) -> Iterator:
+def app_de_prueba(
+    monkeypatch, tmp_path: Path, cliente_ip: str | None = None, **entorno: str
+) -> Iterator:
     """La app real con un entorno controlado, para los tests de rutas HTTP.
 
     Las dos `cache_clear()` no son adorno: `get_settings` y `get_inventario`
@@ -89,7 +91,8 @@ def app_de_prueba(monkeypatch, tmp_path: Path, **entorno: str) -> Iterator:
     from casa_ai.main import crear_app
 
     try:
-        with TestClient(crear_app()) as cliente:
+        extra = {"client": (cliente_ip, 40000)} if cliente_ip else {}
+        with TestClient(crear_app(), **extra) as cliente:
             yield cliente
     finally:
         get_settings.cache_clear()

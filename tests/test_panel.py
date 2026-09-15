@@ -170,3 +170,66 @@ def test_el_panel_usa_rutas_relativas_para_el_ingress() -> None:
     js = (carpeta / "panel.js").read_text("utf-8")
     assert 'src="panel.js"' in html and 'src="/panel.js"' not in html
     assert 'pedir("api/panel")' in js and '"/api/panel' not in js and '`/api/panel' not in js
+
+
+# --- Por el ingress de Home Assistant ---------------------------------------
+
+INGRESS = {"X-Ingress-Path": "/api/hassio_ingress/abc"}
+
+
+def _config_con_personas(tmp_path: Path) -> str:
+    ruta = tmp_path / "config.yaml"
+    ruta.write_text(
+        "camaras:\n  - nombre: Cine\n    id_protect: c1\n"
+        "personas:\n"
+        "  - {nombre: Papa, nivel: dueno, dispositivos: ['usuario-papa']}\n"
+        "  - {nombre: Peque, nivel: nino, dispositivos: ['usuario-peque']}\n",
+        "utf-8",
+    )
+    return str(ruta)
+
+
+def test_por_el_ingress_no_hace_falta_token(monkeypatch, tmp_path: Path) -> None:
+    """Home Assistant ya ha hecho el login (y su segundo factor): el
+    Supervisor reenvia con X-Ingress-Path y el usuario, y con eso basta."""
+    with app_de_prueba(
+        monkeypatch, tmp_path, cliente_ip="172.30.32.2",
+        API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="true", CONFIG_PATH=_config_con_personas(tmp_path),
+    ) as c:
+        assert c.get("/api/panel").status_code == 401           # sin cabecera de ingress
+        r = c.get("/api/panel", headers={**INGRESS, "X-Remote-User-Id": "papa"})
+        assert r.status_code == 200
+        assert [x["nombre"] for x in r.json()["camaras"]] == ["Cine"]
+
+        # La tablet del nino: mismo panel, sin camaras, y la captura ni con enganos.
+        r = c.get("/api/panel", headers={**INGRESS, "X-Remote-User-Id": "peque"})
+        assert r.status_code == 200 and r.json()["camaras"] == []
+        r = c.get("/api/panel/camara/Cine", headers={**INGRESS, "X-Remote-User-Id": "peque"})
+        assert r.status_code == 403
+        # Un usuario de HA que no esta declarado es nino: falla cerrado.
+        r = c.get("/api/panel", headers={**INGRESS, "X-Remote-User-Id": "invitado"})
+        assert r.status_code == 200 and r.json()["camaras"] == []
+
+
+def test_el_ingress_solo_se_cree_si_viene_del_supervisor(monkeypatch, tmp_path: Path) -> None:
+    """Las cabeceras las puede poner cualquiera; la IP de origen, no."""
+    with app_de_prueba(
+        monkeypatch, tmp_path, cliente_ip="192.168.0.50",
+        API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="true",
+    ) as c:
+        r = c.get("/api/panel", headers={**INGRESS, "X-Remote-User-Id": "papa"})
+        assert r.status_code == 401
+    # Y fuera del complemento (sin la opcion), tampoco desde esa red.
+    with app_de_prueba(
+        monkeypatch, tmp_path, cliente_ip="172.30.32.2",
+        API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="false",
+    ) as c:
+        assert c.get("/api/panel", headers=INGRESS).status_code == 401
+
+
+def test_el_panel_entra_solo_si_el_backend_no_pide_token() -> None:
+    carpeta = Path(__file__).resolve().parents[1] / "src" / "casa_ai" / "panel"
+    js = (carpeta / "panel.js").read_text("utf-8")
+    assert "if (token()) cabeceras.Authorization" in js
+    assert 'pedir("salud")' in js and 'pedir("/salud")' not in js
+    assert "\nentrar();" in js

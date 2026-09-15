@@ -15,10 +15,12 @@ probar sin moviles de por medio:
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
 import secrets
 import sys
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -87,17 +89,51 @@ class RespuestaChat(BaseModel):
 USUARIO_HTTP = "api"
 
 
+@dataclass(frozen=True)
+class Identidad:
+    """Quien esta al otro lado de una peticion HTTP autenticada."""
+
+    canal: str
+    usuario: str
+
+
+# La red interna de Home Assistant: el Supervisor, que es quien reenvia el
+# ingress, vive ahi. Una peticion que llega de esa red con X-Ingress-Path la
+# ha autenticado Home Assistant con el login del usuario (y su segundo factor).
+RED_SUPERVISOR = ipaddress.ip_network("172.30.32.0/23")
+
+IDENTIDAD_TOKEN = Identidad("http", USUARIO_HTTP)
+
+
 def _autenticador(settings: Settings):
-    """Exige el token de API en todos los endpoints.
+    """Exige el token de API en todos los endpoints, o el ingress de HA.
 
     Falla cerrado: si no hay token configurado, el API no se sirve. El canal
     HTTP da el mismo control de la casa que Telegram (encender, apagar, ver
     camaras, y con confirmacion tocar la bateria o el wifi), asi que dejarlo
     abierto porque "esta en la LAN" no es defendible: basta un dispositivo
     invitado o un tunel puesto delante para el webhook de WhatsApp.
+
+    Devuelve la identidad: `api` con el token (cuenta como dueno), o el
+    usuario de Home Assistant cuando la peticion viene por el ingress, que
+    es lo que hace que el panel en la tablet de un nino sea el de un nino.
     """
 
-    async def verificar(authorization: str = Header(default="")) -> None:
+    def _por_ingress(request: Request) -> Identidad | None:
+        if not settings.api_confiar_en_ingress or not request.headers.get("x-ingress-path"):
+            return None
+        try:
+            origen = ipaddress.ip_address(request.client.host if request.client else "")
+        except ValueError:
+            return None
+        if origen not in RED_SUPERVISOR:
+            return None
+        usuario = request.headers.get("x-remote-user-id", "").strip()
+        return Identidad("panel", f"usuario-{usuario}" if usuario else "sin-identidad")
+
+    async def verificar(request: Request, authorization: str = Header(default="")) -> Identidad:
+        if (identidad := _por_ingress(request)) is not None:
+            return identidad
         if not settings.api_token:
             raise HTTPException(
                 503,
@@ -110,6 +146,7 @@ def _autenticador(settings: Settings):
         # un caracter no ASCII, y eso convertia un token invalido en un 500.
         if not secrets.compare_digest(authorization.encode(), esperado.encode()):
             raise HTTPException(401, "Token invalido o ausente.")
+        return IDENTIDAD_TOKEN
 
     return verificar
 
@@ -205,16 +242,20 @@ def crear_app() -> FastAPI:
     async def panel_js() -> FileResponse:
         return FileResponse(_PANEL / "panel.js", media_type="application/javascript")
 
-    @api.get("/api/panel", dependencies=[Depends(autenticar)])
-    async def datos_panel() -> dict[str, Any]:
+    @api.get("/api/panel")
+    async def datos_panel(quien: Identidad = Depends(autenticar)) -> dict[str, Any]:  # noqa: B008
         """Todo lo que el panel muestra, en una sola pasada. Solo lectura."""
-        ctx = aplicacion.contexto_para("http", USUARIO_HTTP, "http:panel")
+        ctx = aplicacion.contexto_para(quien.canal, quien.usuario, f"{quien.canal}:panel")
         return await recopilar(ctx)
 
-    @api.get("/api/panel/camara/{nombre}", dependencies=[Depends(autenticar)])
-    async def camara_panel(nombre: str) -> Response:
+    @api.get("/api/panel/camara/{nombre}")
+    async def camara_panel(
+        nombre: str, quien: Identidad = Depends(autenticar),  # noqa: B008
+    ) -> Response:
         """Captura JPEG. Va por fetch con cabecera, no por <img src>."""
-        ctx = aplicacion.contexto_para("http", USUARIO_HTTP, "http:panel")
+        ctx = aplicacion.contexto_para(quien.canal, quien.usuario, f"{quien.canal}:panel")
+        if ctx.es_nino:
+            raise HTTPException(403, "Las camaras no son para ninos.")
         try:
             imagen, _identificador = await ctx.camaras.captura(nombre)
         except AdapterError as e:

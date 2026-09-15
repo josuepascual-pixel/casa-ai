@@ -29,6 +29,8 @@ def test_la_persona_sale_del_canal_y_falla_cerrado() -> None:
     assert inv.persona_de("telegram", "1").nombre == "Josue"
     assert inv.persona_de("whatsapp", "+34600").nombre == "Ana"
     assert inv.persona_de("voz", "satelite-leo").es_nino
+    # El panel por ingress usa la misma identidad que la voz: el usuario de HA.
+    assert inv.persona_de("panel", inv.personas[2].dispositivos[0]).es_nino
     # Autorizado pero no declarado: nino. Y el token del API es del dueno.
     desconocido = inv.persona_de("telegram", "999")
     assert desconocido is not None and desconocido.es_nino

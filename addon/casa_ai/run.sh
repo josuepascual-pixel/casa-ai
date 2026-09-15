@@ -35,6 +35,9 @@ export API_HOST="0.0.0.0"
 # pero solo se les atiende a ellos: localhost y la red interna de HA. Ningun
 # equipo de la casa ve el API, con o sin token.
 export API_CLIENTES="127.0.0.0/8,::1/128,172.30.32.0/23"
+# El panel se abre desde la barra lateral de HA: el Supervisor reenvia la
+# peticion con el usuario que ha hecho login, y con eso basta.
+export API_CONFIAR_EN_INGRESS="true"
 export TZ="${ZONA_HORARIA:-Europe/Madrid}"
 
 if [ ! -f /config/config.yaml ]; then

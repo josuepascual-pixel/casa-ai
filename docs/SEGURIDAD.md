@@ -228,7 +228,11 @@ Honestamente:
   direcciones se atiende; el complemento lo fija a localhost y a la red del
   Supervisor, así que el panel solo se abre desde dentro de Home Assistant
   (ingress, tras su login) y ningún equipo de la casa llega al puerto aunque
-  tenga el token. Con el API abierto a toda la red, `/verificar` avisa.
+  tenga el token. Por el ingress no hace falta token: la petición llega del
+  Supervisor (su IP, no una cabecera que cualquiera pueda poner) con el
+  usuario de HA que hizo login, y ese usuario es la persona: en la tablet
+  del niño el panel no lista cámaras y la captura da 403. Con el API abierto
+  a toda la red, `/verificar` avisa.
 - **Interruptor de emergencia.** `/bloquear` (solo el dueño) deja la casa en
   solo lectura por todos los canales, cancela lo pendiente y lo mantiene
   hasta `/desbloquear`. Es lo que se pulsa si se pierde un móvil.

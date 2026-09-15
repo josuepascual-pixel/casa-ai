@@ -66,7 +66,9 @@ async def recopilar(ctx: Contexto) -> dict[str, Any]:
 
     datos: dict[str, Any] = await reunir(**tareas)
     datos["momento"] = ahora(ctx.settings).strftime("%H:%M:%S")
-    datos["camaras"] = [
+    # A un nino no se le listan camaras: ni los nombres. El endpoint de la
+    # captura lo rechaza ademas por su cuenta.
+    datos["camaras"] = [] if ctx.es_nino else [
         {"nombre": c.nombre, "zona": c.zona} for c in ctx.inventario.camaras
     ]
     return datos
