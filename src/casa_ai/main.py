@@ -79,8 +79,16 @@ class PeticionSondeo(BaseModel):
     orden: str = Field(default="sondear", max_length=64, pattern=r"^[a-z0-9 ]+$")
 
 
+class AdjuntoChat(BaseModel):
+    nombre: str
+    contenido: str
+
+
 class RespuestaChat(BaseModel):
     respuesta: str
+    # Archivos que el agente entrego (un programa, un documento). El panel los
+    # ofrece como descarga; un cliente HTTP los guarda donde quiera.
+    adjuntos: list[AdjuntoChat] = []
 
 
 # Identidad del canal HTTP. Es fija a proposito: si viniera en el cuerpo de la
@@ -320,13 +328,19 @@ def crear_app() -> FastAPI:
             conversacion = f"http:{peticion.hilo}"
         else:
             conversacion = f"{quien.canal}:{quien.usuario}"
-        respuesta = await aplicacion.responder(
+        respuesta = await aplicacion.responder_completo(
             canal=quien.canal,
             usuario=quien.usuario,
             conversacion=conversacion,
             entrada=peticion.mensaje,
         )
-        return RespuestaChat(respuesta=respuesta)
+        return RespuestaChat(
+            respuesta=respuesta.texto,
+            adjuntos=[
+                AdjuntoChat(nombre=a.nombre, contenido=a.contenido)
+                for a in respuesta.adjuntos
+            ],
+        )
 
     @api.post("/voz", response_model=RespuestaChat, dependencies=[Depends(solo_token)])
     async def voz(peticion: PeticionVoz) -> RespuestaChat:

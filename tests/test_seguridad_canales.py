@@ -30,15 +30,15 @@ def cliente(monkeypatch, tmp_path: Path):
     El agente se sustituye por un doble: estos tests prueban quien puede
     entrar, no lo que responde el modelo, y no deben salir a la red.
     """
-    from casa_ai.app import Aplicacion
+    from casa_ai.app import Aplicacion, Respuesta
 
     turnos: list[dict[str, Any]] = []
 
-    async def responder_falso(self: Any, **kwargs: Any) -> str:
+    async def responder_falso(self: Any, **kwargs: Any) -> Respuesta:
         turnos.append(kwargs)
-        return "ok"
+        return Respuesta("ok", [])
 
-    monkeypatch.setattr(Aplicacion, "responder", responder_falso)
+    monkeypatch.setattr(Aplicacion, "responder_completo", responder_falso)
 
     # Tampoco se sale a la Cloud API de Meta a entregar la respuesta.
     from casa_ai.channels.whatsapp import CanalWhatsApp

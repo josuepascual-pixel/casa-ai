@@ -30,9 +30,14 @@ class MensajeFalso:
         self.chat = self
         self.acciones: list[Any] = []
 
+        self.documentos: list[tuple[str, bytes]] = []
+
     async def reply_text(self, texto: str, **kwargs: Any) -> None:
         self.respuestas.append(texto)
         self.teclados.append(kwargs.get("reply_markup"))
+
+    async def reply_document(self, document: bytes, filename: str, **_: Any) -> None:
+        self.documentos.append((filename, document))
 
     async def send_action(self, accion: Any) -> None:
         self.acciones.append(accion)
@@ -561,3 +566,18 @@ async def test_los_avisos_de_intruso_tienen_tope_y_el_nombre_va_acotado(
     from casa_ai.channels.telegram import AVISOS_POR_HORA
 
     assert len(enviados) == AVISOS_POR_HORA
+
+
+# --- Archivos ----------------------------------------------------------------
+
+
+async def test_un_programa_llega_como_documento_detras_del_texto(bot: BotTelegram) -> None:
+    from casa_ai.agent.registry import Adjunto
+
+    bot.app.adjuntos.append(Adjunto("hola.py", "print('hola')\n"))  # type: ignore[attr-defined]
+    update = UpdateFalso(chat_id=555, mensaje=MensajeFalso("hazme un programa que salude"))
+
+    await bot._texto(update, None)  # type: ignore[arg-type]
+
+    assert update.message.respuestas == ["hecho"]
+    assert update.message.documentos == [("hola.py", b"print('hola')\n")]

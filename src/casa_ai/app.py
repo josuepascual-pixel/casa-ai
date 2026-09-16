@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 from .adapters.bluos import BluOS
@@ -16,7 +17,7 @@ from .adapters.sungrow import Sungrow
 from .adapters.unifi import UniFi
 from .afirmaciones import es_afirmacion, es_negacion
 from .agent.orchestrator import Agente, crear_cliente
-from .agent.registry import Confirmacion, Contexto, Registro
+from .agent.registry import Adjunto, Confirmacion, Contexto, Registro
 from .channels.comun import CANCELAR, decodificar
 from .settings import Inventario, Settings, get_settings
 from .store import Store
@@ -38,6 +39,14 @@ def _texto_resultado(resultado: object) -> str:
             return str(resultado["detalle"])
         return ", ".join(f"{k}: {v}" for k, v in resultado.items())
     return str(resultado)
+
+
+@dataclass
+class Respuesta:
+    """Lo que sale de un turno: el texto y los archivos que el agente entrego."""
+
+    texto: str
+    adjuntos: list[Adjunto]
 
 
 class Aplicacion:
@@ -187,6 +196,9 @@ class Aplicacion:
             persona=persona,
             ha=ha,
             confirmacion=confirmacion,
+            # Lista nueva: `replace` copiaria la referencia del contexto base
+            # y los archivos de un turno se colarian en el siguiente.
+            adjuntos=[],
         )
 
     def resumen_configuracion(self) -> dict[str, object]:
@@ -217,6 +229,25 @@ class Aplicacion:
         entrada: object,
         confirmacion: Confirmacion = "en_banda",
     ) -> str:
+        """Un turno, solo el texto: para los canales que no entregan archivos."""
+        respuesta = await self.responder_completo(
+            canal=canal,
+            usuario=usuario,
+            conversacion=conversacion,
+            entrada=entrada,
+            confirmacion=confirmacion,
+        )
+        return respuesta.texto
+
+    async def responder_completo(
+        self,
+        *,
+        canal: str,
+        usuario: str,
+        conversacion: str,
+        entrada: object,
+        confirmacion: Confirmacion = "en_banda",
+    ) -> Respuesta:
         """Punto de entrada unico para todos los canales.
 
         `confirmacion` dice como puede autorizar una accion de riesgo el humano
@@ -226,12 +257,13 @@ class Aplicacion:
         if confirmacion == "en_banda" and isinstance(entrada, str):
             resuelto = await self._resolver_en_banda(canal, usuario, conversacion, entrada)
             if resuelto is not None:
-                return resuelto
+                return Respuesta(resuelto, [])
         ctx = self.contexto_para(
             canal, usuario, conversacion, confirmacion=confirmacion
         )
         agente = Agente(self.settings, self.registro, ctx, self.cliente)
-        return await agente.responder(conversacion, entrada)  # type: ignore[arg-type]
+        texto = await agente.responder(conversacion, entrada)  # type: ignore[arg-type]
+        return Respuesta(texto, ctx.adjuntos)
 
     async def _resolver_en_banda(
         self, canal: str, usuario: str, conversacion: str, texto: str

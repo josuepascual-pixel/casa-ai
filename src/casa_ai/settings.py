@@ -425,6 +425,12 @@ class Settings(BaseSettings):
     # Fallback gestionado por servidor: si un clasificador de seguridad rechaza
     # la peticion, la API reencamina a otro modelo en vez de devolver nada.
     fallbacks_servidor: bool = True
+    # Busqueda web del propio modelo (herramienta de servidor de la API): es lo
+    # que le deja contestar a «que tiempo hara manana» o «que version va de
+    # tal programa». No se le ofrece a un nino: la lista blanca de
+    # herramientas vale igual para las del servidor.
+    busqueda_web: bool = True
+    busqueda_web_max_usos: int = 5
 
     # --- Home Assistant (frontal de ONNA/KNX y del resto de la domotica) ---
     ha_url: str = "http://homeassistant.local:8123"

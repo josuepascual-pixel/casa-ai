@@ -936,7 +936,18 @@ async function preguntar(mensaje) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mensaje, hilo: "panel" }),
     });
-    espera.textContent = (await r.json()).respuesta;
+    const datos = await r.json();
+    espera.textContent = datos.respuesta;
+    // Un programa o un documento llegan como archivo: un enlace de descarga
+    // debajo del texto, generado en el navegador (nada sale del panel).
+    for (const adjunto of datos.adjuntos || []) {
+      const enlace = el("a", "adjunto", `⬇ ${adjunto.nombre}`);
+      enlace.href = URL.createObjectURL(
+        new Blob([adjunto.contenido], { type: "text/plain;charset=utf-8" })
+      );
+      enlace.download = adjunto.nombre;
+      espera.appendChild(enlace);
+    }
   } catch (e) {
     espera.textContent = `No he podido responder: ${e.message}`;
   }

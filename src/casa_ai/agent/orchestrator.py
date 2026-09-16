@@ -20,6 +20,10 @@ Detalles de la llamada:
   estuviera en el prefijo cacheado, cada mensaje seria un fallo de cache.
 * `fallbacks` del servidor: si un clasificador de seguridad rechaza la
   peticion, la API la reencamina en vez de devolver nada.
+* Busqueda web: es una herramienta del SERVIDOR. Va al final de la lista de
+  `tools` (orden estable, por la cache) y la ejecuta la propia API: el bucle
+  no ve `tool_use` de ella, solo bloques `server_tool_use` y
+  `web_search_tool_result`, que se devuelven en el historial tal cual.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, ClassVar
 
 import anthropic
 
@@ -41,6 +45,7 @@ from .safety import Ejecutor, contenido_para_api
 log = logging.getLogger(__name__)
 
 BETA_FALLBACKS = "server-side-fallback-2026-07-01"
+BUSQUEDA_WEB = "web_search_20260209"
 MAX_VUELTAS = 12
 MAX_REINICIOS_PAUSA = 3
 
@@ -61,6 +66,12 @@ def crear_cliente(settings: Settings) -> anthropic.AsyncAnthropic:
 
 
 class Agente:
+    # Se apaga para todo el proceso cuando la API dice que la organizacion no
+    # tiene la busqueda web habilitada: es un ajuste de la consola de
+    # Anthropic, no cambia entre turnos, y asi no se paga una peticion fallida
+    # por cada mensaje.
+    busqueda_web_disponible: ClassVar[bool] = True
+
     def __init__(
         self,
         settings: Settings,
@@ -117,7 +128,7 @@ class Agente:
         mensajes: list[dict[str, Any]] = [*historial, {"role": "user", "content": bloques}]
         store.anadir_mensaje(conversacion, "user", bloques)
 
-        herramientas = self._registro.definiciones_api(self._ctx)
+        herramientas = self._herramientas()
         texto_final = ""
         reinicios_pausa = 0
 
@@ -128,12 +139,11 @@ class Agente:
                 motivo = getattr(respuesta, "stop_details", None)
                 categoria = getattr(motivo, "category", None) if motivo else None
                 log.warning("Peticion rechazada por el clasificador (%s)", categoria)
-                return (
-                    "No he podido procesar esa peticion. Reformulala o dime que "
-                    "sistema de la casa quieres consultar."
-                )
+                return "No he podido procesar esa peticion. Pruebalo de otra manera."
 
-            contenido = [b.model_dump() for b in respuesta.content]
+            # Sin los None: un bloque de la API vuelve a la API tal cual, y
+            # los campos opcionales vacios (citas, cache) solo estorban.
+            contenido = [b.model_dump(exclude_none=True) for b in respuesta.content]
             mensajes.append({"role": "assistant", "content": contenido})
             store.anadir_mensaje(conversacion, "assistant", contenido)
 
@@ -175,6 +185,23 @@ class Agente:
             or "He dado demasiadas vueltas sin terminar. Concretame un poco mas que necesitas."
         )
 
+    def _herramientas(self) -> list[dict[str, Any]]:
+        """Las del registro y, detras, la busqueda web del servidor.
+
+        Detras y no delante por la cache de prompt: `tools` se renderiza
+        antes que `system`, asi que el orden tiene que ser el mismo en cada
+        mensaje. A un nino no se le ofrece: la lista blanca de herramientas
+        es la misma para las que ejecuta la API.
+        """
+        herramientas = self._registro.definiciones_api(self._ctx)
+        if self._s.busqueda_web and Agente.busqueda_web_disponible and not self._ctx.es_nino:
+            herramientas.append({
+                "type": BUSQUEDA_WEB,
+                "name": "web_search",
+                "max_uses": self._s.busqueda_web_max_usos,
+            })
+        return herramientas
+
     # --- Llamada a la API -------------------------------------------------
     async def _llamar(
         self,
@@ -203,6 +230,21 @@ class Agente:
             "cache_control": {"type": "ephemeral"},
         }
 
+        try:
+            return await self._llamar_con(params, on_texto)
+        except anthropic.BadRequestError as e:
+            if not _es_de_busqueda_web(e) or not any(_es_busqueda_web(h) for h in herramientas):
+                raise
+            log.warning(
+                "La busqueda web no esta habilitada para esta organizacion (consola "
+                "de Anthropic > Settings); se sigue sin ella: %s", e,
+            )
+            Agente.busqueda_web_disponible = False
+            # In situ: la lista es la del turno entero, y `params` la comparte.
+            herramientas[:] = [h for h in herramientas if not _es_busqueda_web(h)]
+            return await self._llamar_con(params, on_texto)
+
+    async def _llamar_con(self, params: dict[str, Any], on_texto: OnTexto | None) -> Any:
         if self._usar_fallbacks:
             try:
                 return await self._stream(
@@ -211,6 +253,10 @@ class Agente:
                     on_texto,
                 )
             except anthropic.BadRequestError as e:
+                # Solo si el 400 es por el beta: otro error (la busqueda web,
+                # un parametro) no es culpa de los fallbacks y se propaga.
+                if "fallback" not in str(e).lower():
+                    raise
                 # La cuenta no tiene el beta habilitado: seguimos sin fallbacks
                 # en vez de dejar al usuario sin respuesta.
                 log.warning("Fallbacks de servidor no disponibles, se desactivan: %s", e)
@@ -257,3 +303,12 @@ class Agente:
             return bloque
 
         return list(await asyncio.gather(*(una(ll) for ll in llamadas)))
+
+
+def _es_busqueda_web(herramienta: dict[str, Any]) -> bool:
+    return herramienta.get("type") == BUSQUEDA_WEB
+
+
+def _es_de_busqueda_web(error: Exception) -> bool:
+    texto = str(error).lower()
+    return "web_search" in texto or "web search" in texto

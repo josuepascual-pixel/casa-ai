@@ -298,15 +298,15 @@ def test_el_chat_del_panel_habla_como_el_usuario_de_home_assistant(
 ) -> None:
     """Por el ingress /chat no es `api` (dueno): es quien hizo login en HA,
     con su nivel, y su hilo es suyo aunque el cuerpo diga otro."""
-    from casa_ai.app import Aplicacion
+    from casa_ai.app import Aplicacion, Respuesta
 
     turnos: list[dict] = []
 
     async def responder_falso(self, **kwargs):
         turnos.append(kwargs)
-        return "ok"
+        return Respuesta("ok", [])
 
-    monkeypatch.setattr(Aplicacion, "responder", responder_falso)
+    monkeypatch.setattr(Aplicacion, "responder_completo", responder_falso)
     with app_de_prueba(
         monkeypatch, tmp_path, cliente_ip="172.30.32.2",
         API_TOKEN=TOKEN, API_CONFIAR_EN_INGRESS="true", ANTHROPIC_API_KEY="sk-test",
@@ -322,6 +322,34 @@ def test_el_chat_del_panel_habla_como_el_usuario_de_home_assistant(
                    headers={"Authorization": f"Bearer {TOKEN}"})
         assert r.status_code == 200
         assert turnos[-1]["canal"] == "http" and turnos[-1]["conversacion"] == "http:default"
+        assert r.json() == {"respuesta": "ok", "adjuntos": []}
+
+
+def test_el_chat_devuelve_los_archivos_que_entrega_el_agente(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from casa_ai.agent.registry import Adjunto
+    from casa_ai.app import Aplicacion, Respuesta
+
+    async def responder_falso(self, **kwargs):
+        return Respuesta("Ahi va.", [Adjunto("hola.py", "print('hola')")])
+
+    monkeypatch.setattr(Aplicacion, "responder_completo", responder_falso)
+    with app_de_prueba(
+        monkeypatch, tmp_path, API_TOKEN=TOKEN, ANTHROPIC_API_KEY="sk-test",
+    ) as c:
+        r = c.post("/chat", json={"mensaje": "un programa"},
+                   headers={"Authorization": f"Bearer {TOKEN}"})
+        assert r.json() == {
+            "respuesta": "Ahi va.",
+            "adjuntos": [{"nombre": "hola.py", "contenido": "print('hola')"}],
+        }
+
+
+def test_el_panel_ofrece_los_archivos_como_descarga() -> None:
+    js = (Path(__file__).parents[1] / "src/casa_ai/panel/panel.js").read_text()
+    assert "datos.adjuntos" in js and "enlace.download" in js
+    assert "createObjectURL" in js  # se genera en el navegador, no vuelve al servidor
 
 
 # --- La casa segun Home Assistant --------------------------------------------

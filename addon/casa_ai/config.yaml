@@ -35,6 +35,7 @@ options:
   anthropic_api_key: ""
   modelo: claude-opus-5
   esfuerzo: high
+  busqueda_web: true
   telegram_token: ""
   telegram_chats_autorizados: ""
   api_token: ""
@@ -70,6 +71,7 @@ schema:
   anthropic_api_key: password
   modelo: str
   esfuerzo: list(low|medium|high|xhigh|max)
+  busqueda_web: bool
   telegram_token: password
   telegram_chats_autorizados: str
   api_token: password

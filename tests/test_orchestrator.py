@@ -30,7 +30,7 @@ class BloqueTexto:
     text: str
     type: str = "text"
 
-    def model_dump(self) -> dict[str, Any]:
+    def model_dump(self, **_: Any) -> dict[str, Any]:
         return {"type": "text", "text": self.text}
 
 
@@ -41,7 +41,7 @@ class BloqueHerramienta:
     id: str = "tu_1"
     type: str = "tool_use"
 
-    def model_dump(self) -> dict[str, Any]:
+    def model_dump(self, **_: Any) -> dict[str, Any]:
         return {"type": "tool_use", "id": self.id, "name": self.name, "input": self.input}
 
 

@@ -146,6 +146,13 @@ conjunto estático de estados— pero no metas cerraduras en una escena.
   ejecutar, no solo al ofrecer, así que un modelo con el contexto envenenado
   tampoco puede saltárselo. Un chat autorizado que no esté declarado cuenta
   como niño. El token del API, la terminal y las rutinas son del dueño.
+- **Ser asistente general no da más permisos en la casa.** La búsqueda web es
+  una herramienta del servidor de la API, va detrás de las de la casa y se
+  apaga con `busqueda_web: false`; a un niño no se le ofrece. Lo que llega de
+  una página web es un dato, y el prompt lo dice: nunca una orden. Los
+  archivos que entrega el agente (un programa, un documento) son texto que va
+  del modelo al chat de quien preguntó; no se escriben en disco, el nombre se
+  sanea (sin rutas) y hay tope de tamaño y de número por turno.
 
 ## Configuración mínima segura
 

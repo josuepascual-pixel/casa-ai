@@ -14,7 +14,7 @@ import respx
 
 from casa_ai.adapters.camaras_base import elegir_camaras
 from casa_ai.agent.registry import Contexto
-from casa_ai.app import Aplicacion
+from casa_ai.app import Aplicacion, Respuesta
 from casa_ai.settings import Inventario, Settings
 from casa_ai.store import Store
 
@@ -145,12 +145,16 @@ class AplicacionFalsa:
         self.detalle = detalle
         self.store = StoreFalso() if store is None else store
         self.turnos: list[dict[str, Any]] = []
+        self.adjuntos: list[Any] = []
         self.confirmadas: list[dict[str, Any]] = []
         self.canceladas: list[dict[str, Any]] = []
 
     async def responder(self, **kwargs: Any) -> str:
+        return (await self.responder_completo(**kwargs)).texto
+
+    async def responder_completo(self, **kwargs: Any) -> Respuesta:
         self.turnos.append(kwargs)
-        return self.respuesta
+        return Respuesta(self.respuesta, list(self.adjuntos))
 
     async def confirmar_pendiente(self, **kwargs: Any) -> tuple[str, bool]:
         self.confirmadas.append(kwargs)

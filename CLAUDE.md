@@ -9,7 +9,7 @@ WhatsApp, texto o nota de voz.
 
 ```bash
 pip install -e ".[dev,voz]"                  # `voz` es opcional y pesada
-PYTHONPATH=src python -m pytest tests -q     # 548 tests, no tocan hardware
+PYTHONPATH=src python -m pytest tests -q     # 564 tests, no tocan hardware
 ruff check src tests                         # debe quedar limpio
 casa-ai                                      # backend + bot + rutinas
 

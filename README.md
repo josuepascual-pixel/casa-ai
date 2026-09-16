@@ -19,6 +19,7 @@ No es un chatbot que explica cómo hacer las cosas. Ejecuta.
 | Cámaras | **UniFi Protect** | API de Protect o proxy de Home Assistant, con visión real sobre las capturas |
 | Todo lo demás | Wallbox, TaHoma, Nuki, HEOS, LG ThinQ, Anthem, spa, riego… | Home Assistant, con catálogo semántico propio — ver [`docs/INTEGRACIONES.md`](docs/INTEGRACIONES.md) |
 | Voz | HomePods y Apple TV para hablar; iPhone y HomePod (Siri) para escuchar, satélite de Assist opcional | `/chat` desde un atajo de Siri, `/voz` desde la integración de Home Assistant, y `tts.speak` para la voz de salida — ver [`docs/VOZ.md`](docs/VOZ.md) |
+| Todo lo que no es la casa | Conversar, programar, redactar, traducir, estudiar, buscar en internet | El mismo Claude, sin herramientas de la casa; búsqueda web del servidor de la API y entrega de archivos por Telegram y por el panel |
 
 Todo es local: el agente habla con el hardware por la LAN. Lo único que sale a
 internet son los turnos de conversación con Claude. Energía y cámaras tienen
@@ -54,6 +55,28 @@ Agente → Hecho: cargando a 3000 W. Recuerda volver a autoconsumo.
 
 Ese último caso es la pieza importante: **las acciones de riesgo no se ejecutan
 a la primera**.
+
+Y no todo tiene que ser la casa. Es un asistente completo: lo que le pedirías a
+un chat de IA se lo pides a él, en el mismo hilo en el que le pides luz.
+
+```
+Tú     → hazme un programa en Python que me avise por Telegram cuando
+         la batería baje del 20 %
+Agente → Ahí va, «aviso_bateria.py». Necesita `pip install requests` y
+         tu token en la primera línea; lo dejas en cron cada 5 min.
+         [aviso_bateria.py]            ← llega como archivo, no en trozos
+
+Tú     → ¿qué tiempo hará mañana en Madrid?
+Agente → Sol y 31 °C de máxima; sin lluvia (AEMET, esta tarde). Buen día
+         para poner la lavadora con el excedente.
+
+Tú     → corrígeme este correo, que suena borde   (y lo pegas)
+Agente → (te lo devuelve entero, corregido, con dos cambios de tono)
+```
+
+Por voz y por WhatsApp no hay archivo que dar, así que ahí el programa va en el
+mensaje. A un niño no se le ofrece la búsqueda en internet, y el prompt le
+pide contenido para su edad.
 
 ## Seguridad: por qué se le puede dar la llave de la casa
 

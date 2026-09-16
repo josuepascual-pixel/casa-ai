@@ -5,12 +5,14 @@ from __future__ import annotations
 from functools import lru_cache
 
 from ..agent.registry import Herramienta, Registro
-from . import camaras, casa, dispositivos, energia, hablar, musica, red, sistema
+from . import archivos, camaras, casa, dispositivos, energia, hablar, musica, red, sistema
 
 
 def construir_registro() -> Registro:
     registro = Registro()
-    for modulo in (energia, casa, dispositivos, musica, red, camaras, sistema, hablar):
+    for modulo in (
+        energia, casa, dispositivos, musica, red, camaras, sistema, hablar, archivos,
+    ):
         registro.anadir(*modulo.HERRAMIENTAS)
     return registro
 

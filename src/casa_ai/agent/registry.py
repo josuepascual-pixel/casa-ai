@@ -36,6 +36,18 @@ class Riesgo(StrEnum):
 
 
 @dataclass
+class Adjunto:
+    """Un archivo que el agente entrega junto a su respuesta.
+
+    Un programa, un documento largo, un CSV: cosas que se guardan o se abren
+    en otro sitio y que en una burbuja de chat no caben o no sirven.
+    """
+
+    nombre: str
+    contenido: str
+
+
+@dataclass
 class Contexto:
     """Todo lo que una herramienta puede necesitar para ejecutarse."""
 
@@ -74,6 +86,9 @@ class Contexto:
     # Quien habla, resuelto por el canal. None cuando la casa no declara
     # personas: entonces todo autorizado es adulto.
     persona: Persona | None = None
+    # Archivos que el agente ha entregado en este turno. Es del turno, no del
+    # contexto base: `Aplicacion.contexto_para` estrena la lista cada vez.
+    adjuntos: list[Adjunto] = field(default_factory=list)
 
     @property
     def es_nino(self) -> bool:

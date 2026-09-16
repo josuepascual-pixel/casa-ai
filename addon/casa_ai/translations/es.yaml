@@ -8,6 +8,9 @@ configuration:
   esfuerzo:
     name: Esfuerzo de razonamiento
     description: high va bien para la casa. xhigh piensa mas y cuesta mas.
+  busqueda_web:
+    name: Busqueda en internet
+    description: Deja que el asistente busque en la web para noticias, precios, el tiempo o versiones de software. Los ninos no la tienen.
   telegram_token:
     name: Token del bot de Telegram
     description: Lo da @BotFather al crear el bot.

@@ -234,7 +234,7 @@ class BotTelegram:
         conversacion = f"{CANAL}:{chat.id}"
 
         await update.message.chat.send_action(ChatAction.TYPING)
-        respuesta = await self.app.responder(
+        respuesta = await self.app.responder_completo(
             canal=CANAL,
             usuario=self._usuario(update),
             conversacion=conversacion,
@@ -243,8 +243,14 @@ class BotTelegram:
             # necesita pasar por el contexto del modelo.
             confirmacion="boton",
         )
-        for trozo in partir(respuesta, LIMITE_MENSAJE):
+        for trozo in partir(respuesta.texto, LIMITE_MENSAJE):
             await update.message.reply_text(trozo)
+        # Un programa o un documento van como archivo, no troceados en
+        # mensajes de 4096 caracteres.
+        for adjunto in respuesta.adjuntos:
+            await update.message.reply_document(
+                document=adjunto.contenido.encode("utf-8"), filename=adjunto.nombre
+            )
 
         await self._ofrecer_botones(update, conversacion)
 
