@@ -34,6 +34,11 @@ zonas:
   - bano suite
   - vestidor
   - dormitorio leo
+  - bano leo
+  - dormitorio 2
+  - dormitorio 3
+  - bano invitados
+  - pasillo alta
   - sala de juegos
   - cine
   - gym
@@ -87,11 +92,19 @@ plano:
   - {zona: gym,                  planta: Planta baja, x: 3,  y: 3, ancho: 3, alto: 3, alias: [gimnasio]}
   - {zona: recibidor,            planta: Planta baja, x: 0,  y: 4, ancho: 2, alto: 2, alias: [entrada, escalera, ascensor, puerta exterior, corredera]}
   - {zona: aseo,                 planta: Planta baja, x: 2,  y: 4, ancho: 1, alto: 2}
-  # Primera: la zona de noche.
-  - {zona: suite,                planta: Primera, x: 0,  y: 0, ancho: 4, alto: 3}
-  - {zona: bano suite,           planta: Primera, x: 4,  y: 0, ancho: 3, alto: 3}
-  - {zona: vestidor,             planta: Primera, x: 7,  y: 0, ancho: 2, alto: 3}
-  - {zona: dormitorio leo,       planta: Primera, x: 0,  y: 3, ancho: 4, alto: 2, alias: [eros, leo]}
+  # Planta alta, segun ONNA: suite, bano suite, vestidor, el cuarto del nino
+  # y su bano, dormitorios 2 y 3, bano de invitados. En tu copia local anade
+  # el nombre real del nino como alias de su cuarto y de su bano (ONNA los
+  # nombra asi), p. ej. `alias: [eros]` / `alias: [bano eros]`.
+  - {zona: suite,                planta: Planta alta, x: 0,  y: 0, ancho: 4, alto: 3, alias: [principal]}
+  - {zona: bano suite,           planta: Planta alta, x: 4,  y: 0, ancho: 3, alto: 3}
+  - {zona: vestidor,             planta: Planta alta, x: 7,  y: 0, ancho: 2, alto: 3}
+  - {zona: dormitorio 3,         planta: Planta alta, x: 9,  y: 0, ancho: 3, alto: 3}
+  - {zona: pasillo alta,         planta: Planta alta, x: 0,  y: 3, ancho: 12, alto: 1, alias: [distribuidor]}
+  - {zona: dormitorio leo,       planta: Planta alta, x: 0,  y: 4, ancho: 3, alto: 2, alias: [leo]}
+  - {zona: bano leo,             planta: Planta alta, x: 3,  y: 4, ancho: 2, alto: 2, alias: [bano leo]}
+  - {zona: dormitorio 2,         planta: Planta alta, x: 5,  y: 4, ancho: 3, alto: 2}
+  - {zona: bano invitados,       planta: Planta alta, x: 8,  y: 4, ancho: 2, alto: 2, alias: [invitados]}
   # Exterior, segun ONNA: piscina, jacuzzi, barbacoa, iluminacion, estacion meteorologica.
   - {zona: barbacoa,             planta: Exterior, x: 0,  y: 0, ancho: 4, alto: 3, exterior: true}
   - {zona: piscina,              planta: Exterior, x: 4,  y: 0, ancho: 5, alto: 3, exterior: true}
