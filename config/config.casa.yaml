@@ -26,6 +26,8 @@ zonas:
   - salon
   - comedor
   - cocina
+  - despensa
+  - entrada
   - despacho
   - suite
   - bano suite
@@ -74,11 +76,15 @@ plano:
   - {zona: habitacion servicio,  planta: Sotano, x: 0,  y: 4, ancho: 5, alto: 2, alias: [servicio, aseo]}
   - {zona: lavadero,             planta: Sotano, x: 5,  y: 4, ancho: 4, alto: 2}
   - {zona: sala de maquinas,     planta: Sotano, x: 9,  y: 4, ancho: 4, alto: 2, alias: [maquinas, enfriadora, deposito, climatizacion]}
-  # Planta baja: la zona de dia.
+  # Planta baja, segun ONNA: cocina (con despensa), comedor, salon (con las
+  # ventanas del porche y de la rampa) y gimnasio. Las puertas exteriores
+  # (entrada, corredera...) van a la entrada.
   - {zona: cocina,               planta: Planta baja, x: 0,  y: 0, ancho: 3, alto: 3}
+  - {zona: despensa,             planta: Planta baja, x: 0,  y: 3, ancho: 3, alto: 1}
   - {zona: comedor,              planta: Planta baja, x: 3,  y: 0, ancho: 3, alto: 3}
-  - {zona: salon,                planta: Planta baja, x: 6,  y: 0, ancho: 5, alto: 3}
-  - {zona: gym,                  planta: Planta baja, x: 0,  y: 3, ancho: 4, alto: 2, alias: [gimnasio]}
+  - {zona: salon,                planta: Planta baja, x: 6,  y: 0, ancho: 5, alto: 4, alias: [porche, rampa]}
+  - {zona: gym,                  planta: Planta baja, x: 3,  y: 3, ancho: 3, alto: 3, alias: [gimnasio]}
+  - {zona: entrada,              planta: Planta baja, x: 0,  y: 4, ancho: 3, alto: 2, alias: [puerta exterior, puerta entrada, corredera, recibidor]}
   # Primera: la zona de noche.
   - {zona: suite,                planta: Primera, x: 0,  y: 0, ancho: 4, alto: 3}
   - {zona: bano suite,           planta: Primera, x: 4,  y: 0, ancho: 3, alto: 3}
@@ -88,7 +94,7 @@ plano:
   - {zona: barbacoa,             planta: Exterior, x: 0,  y: 0, ancho: 4, alto: 3, exterior: true}
   - {zona: piscina,              planta: Exterior, x: 4,  y: 0, ancho: 5, alto: 3, exterior: true}
   - {zona: jacuzzi,              planta: Exterior, x: 9,  y: 0, ancho: 2, alto: 3, exterior: true, alias: [spa]}
-  - {zona: exterior,             planta: Exterior, x: 0,  y: 3, ancho: 11, alto: 2, exterior: true, alias: [jardin, terraza, navidenas, meteo, entrada, fuente, porche, rampa, mastiles]}
+  - {zona: exterior,             planta: Exterior, x: 0,  y: 3, ancho: 11, alto: 2, exterior: true, alias: [jardin, terraza, navidenas, meteo, fuente, mastiles, jardinera]}
 
 # Tarjetas del panel, una por sistema. Luces, persianas y toldos, accesos
 # (garaje, porton, cerradura Nuki), clima y quien esta en casa salen solos.
