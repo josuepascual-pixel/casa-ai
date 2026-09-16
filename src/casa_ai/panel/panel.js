@@ -1,14 +1,17 @@
 // Panel de casa. Solo lectura: las acciones van por el chat, que pasa por la
 // capa de seguridad. Los nombres que llegan del backend se insertan con
 // textContent, nunca con innerHTML: vienen de aparatos y de Home Assistant, y
-// son datos, no marcado.
+// son datos, no marcado. Los iconos se construyen con createElementNS a partir
+// de trazos fijos de este fichero, por la misma razon.
 "use strict";
 
 const CLAVE = "casa-ai-token";
+const CLAVE_VISTA = "casa-ai-vista";
 const REFRESCO_MS = 10000;
 
 const $ = (id) => document.getElementById(id);
 let temporizador = null;
+let ultimosDatos = null;
 
 // --- Acceso -----------------------------------------------------------------
 
@@ -24,6 +27,7 @@ function olvidarToken() {
   try { sessionStorage.removeItem(CLAVE); } catch { /* nada */ }
   if (temporizador) { clearInterval(temporizador); temporizador = null; }
   $("contenido").classList.add("oculto");
+  $("pestanas").classList.add("oculto");
   $("salir").classList.add("oculto");
   $("acceso").classList.remove("oculto");
 }
@@ -42,9 +46,6 @@ async function pedir(ruta, opciones = {}) {
 }
 
 // --- DOM --------------------------------------------------------------------
-// Unos 35 trios createElement/className/textContent escritos a mano en cinco
-// dialectos distintos del mismo patron. Con esto, cambiar la estructura visual
-// se hace en un sitio.
 
 function el(tag, clase, texto) {
   const nodo = document.createElement(tag);
@@ -53,14 +54,60 @@ function el(tag, clase, texto) {
   return nodo;
 }
 
-// Muestra u oculta una tarjeta y dice si hay algo que pintar dentro, para que
-// cada seccion arranque con una linea en vez de con tres.
 function visible(id, hay) {
   $(id).classList.toggle("oculto", !hay);
   return hay;
 }
 
 const hayDatos = (x) => Boolean(x) && !x.no_disponible;
+
+// --- Iconos -----------------------------------------------------------------
+// Trazos de 24x24, a mano y fijos. Se dibujan con createElementNS: ningun
+// texto del backend pasa por aqui.
+
+const ICONOS = {
+  sol: ["M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"],
+  casa: ["M3 11 12 4l9 7", "M5 10v10h14V10", "M10 20v-6h4v6"],
+  bateria: ["M3 8h14v8H3z", "M17 10h3v4h-3", "M6 11v2M9 11v2M12 11v2"],
+  red: ["M12 3v18", "M7 21 12 12l5 9", "M8.5 8.5h7", "M9.5 5.5h5"],
+  luz: ["M9 18h6", "M10 21h4", "M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.2h5c0-.9.4-1.7 1.1-2.2A6 6 0 0 0 12 3z"],
+  candado: ["M5 11h14v10H5z", "M8 11V7a4 4 0 0 1 8 0v4", "M12 15v2"],
+  persiana: ["M4 3h16v18H4z", "M4 8h16M4 13h16M8 13v8"],
+  clima: ["M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z", "M12 10v6"],
+  musica: ["M9 18V6l11-2v12", "M9 18a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z", "M20 16a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"],
+  coche: ["M3 13l2-5h14l2 5v6H3z", "M3 13h18", "M7 18.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17 18.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"],
+  agua: ["M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"],
+  spa: ["M3 10c2-2 4-2 6 0s4 2 6 0 4-2 6 0", "M3 16c2-2 4-2 6 0s4 2 6 0 4-2 6 0"],
+  riego: ["M12 21v-8", "M7 13h10", "M12 13 7 7M12 13l5-6M12 13V4"],
+  cine: ["M3 5h18v14H3z", "M7 5v14M17 5v14", "M3 9h4M3 15h4M17 9h4M17 15h4"],
+  lavadora: ["M4 3h16v18H4z", "M12 18a5 5 0 1 0 0-10 5 5 0 0 0 0 10z", "M8 6h.01M11 6h3"],
+  timbre: ["M7 3h10v18H7z", "M12 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4z", "M10 14h4M10 17h4"],
+  personas: ["M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "M3 20a6 6 0 0 1 12 0", "M17 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z", "M21 20a4.5 4.5 0 0 0-6-4.2"],
+  camara: ["M3 8h4l2-3h6l2 3h4v11H3z", "M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"],
+  wifi: ["M2 9a14 14 0 0 1 20 0", "M5.5 12.5a10 10 0 0 1 13 0", "M9 16a5 5 0 0 1 6 0", "M12 19.5h.01"],
+  aparatos: ["M9 2v5M15 2v5", "M6 7h12v4a6 6 0 0 1-12 0z", "M12 17v5"],
+  jarvis: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
+  alerta: ["M12 3 2 20h20L12 3z", "M12 10v4M12 17h.01"],
+  bien: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M8.5 12.5l2.5 2.5 4.5-5"],
+};
+
+function icono(nombre) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.8");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  for (const d of ICONOS[nombre] || ICONOS.aparatos) {
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", d);
+    svg.appendChild(p);
+  }
+  return svg;
+}
 
 // --- Formato ----------------------------------------------------------------
 
@@ -71,6 +118,8 @@ const vatios = (w) => {
     : `${Math.round(n)} W`;
 };
 
+const grados = (t) => `${Number(t).toLocaleString("es-ES", { maximumFractionDigits: 1 })}°`;
+
 function indicador(etiqueta, valor, unidad, pie, clase) {
   const d = el("div", clase ? `indicador ${clase}` : "indicador");
   const v = el("div", "valor", valor);
@@ -80,269 +129,7 @@ function indicador(etiqueta, valor, unidad, pie, clase) {
   return d;
 }
 
-// --- Pista flotante ---------------------------------------------------------
-// El valor manda y el nombre acompaña: aquí el lector ya sabe qué serie es y
-// lo que quiere es el número. La clave es un trazo, no un cuadro relleno.
-
-const pista = $("pista-flotante");
-
-function mostrarPista(evento, nombre, valor, color) {
-  pista.textContent = "";
-  const n = el("div", "n");
-  const trazo = el("s");
-  trazo.style.background = color;
-  n.append(trazo, document.createTextNode(nombre));
-  pista.append(el("div", "v", valor), n);
-  pista.style.opacity = "1";
-  const r = pista.getBoundingClientRect();
-  const x = Math.min(evento.clientX + 12, window.innerWidth - r.width - 8);
-  pista.style.left = `${Math.max(8, x)}px`;
-  pista.style.top = `${Math.max(8, evento.clientY - r.height - 12)}px`;
-}
-
-const ocultarPista = () => { pista.style.opacity = "0"; };
-
-// --- Secciones --------------------------------------------------------------
-
-function pintarIndicadores(energia) {
-  const cont = $("indicadores");
-  cont.textContent = "";
-  if (!hayDatos(energia)) {
-    cont.appendChild(indicador("Energía", "—", "", energia?.no_disponible || "sin configurar"));
-    $("energia-origen").textContent = "";
-    pintarFlujo(null);
-    return;
-  }
-  const r = energia.resumen;
-  $("energia-origen").textContent = r.origen_de_los_datos ? `· ${r.origen_de_los_datos}` : "";
-  cont.append(
-    indicador("Produciendo", vatios(r.solar_w), "", "sol", "sol"),
-    indicador("Consumiendo", vatios(r.consumo_casa_w), "", "la casa"),
-    indicador(
-      r.red_estado === "exportando" ? "Vertiendo" : "Tomando",
-      vatios(Math.abs(r.red_w)),
-      "",
-      r.red_estado === "exportando" ? "a la red" : "de la red",
-      "red",
-    ),
-    r.bateria_soc_pct === null || r.bateria_soc_pct === undefined
-      ? indicador("Batería", "—", "", "sin lectura", "bateria")
-      : indicador("Batería", String(Math.round(r.bateria_soc_pct)), "%", r.bateria_estado, "bateria"),
-  );
-  pintarFlujo(r);
-}
-
-// El diagrama: sol, batería y red alrededor de la casa. Cada línea se anima
-// en el sentido en que va la energía, y se apaga cuando no pasa nada por ella.
-// Batería positiva = cargando (de la casa hacia ella); red positiva =
-// vertiendo (de la casa hacia la red). Es el mismo signo que en el resumen.
-function pintarFlujo(r) {
-  const linea = (id, w, haciaFuera) => {
-    const n = $(id);
-    const activa = Boolean(r) && Math.abs(Number(w) || 0) >= 50;
-    n.classList.toggle("activa", activa);
-    n.classList.toggle("atras", activa && haciaFuera);
-  };
-  if (!r) {
-    for (const id of ["cifra-sol", "cifra-casa", "cifra-bateria", "cifra-red"]) $(id).textContent = "—";
-    linea("linea-sol", 0, false); linea("linea-bateria", 0, false); linea("linea-red", 0, false);
-    return;
-  }
-  $("cifra-sol").textContent = vatios(r.solar_w);
-  $("cifra-casa").textContent = vatios(r.consumo_casa_w);
-  $("cifra-bateria").textContent = r.bateria_w ? vatios(Math.abs(r.bateria_w)) : "en reposo";
-  $("cifra-red").textContent = r.red_w ? vatios(Math.abs(r.red_w)) : "0 W";
-  linea("linea-sol", r.solar_w, false);
-  // La línea de la batería está dibujada desde la casa: "atrás" es hacia la casa.
-  linea("linea-bateria", r.bateria_w, Number(r.bateria_w) < 0);
-  linea("linea-red", r.red_w, r.red_estado !== "exportando");
-}
-
-function pintarBateria(energia) {
-  if (!visible("tarjeta-bateria", hayDatos(energia))) return;
-
-  const r = energia.resumen;
-  const estado = $("estado-bateria");
-  estado.textContent = "";
-  // Sin lectura de SOC no se pinta un 0 %: se dice que no se sabe.
-  if (r.bateria_soc_pct === null || r.bateria_soc_pct === undefined) {
-    $("relleno-bateria").style.width = "0%";
-    $("soc-bateria").textContent = "—";
-    estado.textContent = "Sin lectura de la carga de la batería.";
-    return;
-  }
-  const soc = Math.max(0, Math.min(100, Number(r.bateria_soc_pct)));
-  $("relleno-bateria").style.width = `${soc}%`;
-  const socNodo = $("soc-bateria");
-  socNodo.textContent = String(Math.round(soc));
-  socNodo.appendChild(el("small", null, "%"));
-
-  // El relleno lleva la severidad. El color nunca va solo: le acompaña
-  // siempre un punto y un texto.
-  let color = "var(--cian)";
-  let texto = r.bateria_estado || "";
-  if (soc < 10) { color = "var(--critico)"; texto += " · muy baja"; }
-  else if (soc < 20) { color = "var(--aviso)"; texto += " · baja"; }
-  $("relleno-bateria").style.background = color;
-
-  const punto = el("span", "punto");
-  punto.style.background = color;
-  estado.append(punto, document.createTextNode(texto));
-  if (r.bateria_w) {
-    estado.append(document.createTextNode(` a ${vatios(Math.abs(r.bateria_w))}`));
-  }
-  if (r.bateria_salud_pct !== undefined && r.bateria_salud_pct !== null) {
-    estado.append(document.createTextNode(` · salud ${Math.round(r.bateria_salud_pct)} %`));
-  }
-}
-
-const SERIES = [
-  { clave: "solar_w", nombre: "Sol", color: "var(--oro)" },
-  { clave: "bateria_w", nombre: "Batería", color: "var(--cian)" },
-  { clave: "red_w", nombre: "Red", color: "var(--malva)" },
-];
-
-function pintarMezcla(energia) {
-  if (!visible("tarjeta-mezcla", hayDatos(energia))) return;
-
-  // Las series se derivan UNA vez. Antes cada una se recalculaba en cuatro
-  // sitios independientes (el total, el filtro de presentes, el bucle de
-  // segmentos y otra vez en la tabla), asi que cambiar el umbral del 2 % o
-  // anadir una cuarta fuente obligaba a tocar cuatro bucles y mantenerlos de
-  // acuerdo.
-  const m = energia.mezcla;
-  const total = SERIES.reduce((suma, x) => suma + (m[x.clave] || 0), 0);
-  const partes = SERIES.map((x) => {
-    const w = m[x.clave] || 0;
-    return { ...x, w, pct: total > 0 ? (w / total) * 100 : 0 };
-  });
-
-  const barra = $("apilada");
-  const leyenda = $("leyenda");
-  barra.textContent = "";
-  leyenda.textContent = "";
-  pintarTabla(partes);
-
-  if (total <= 0) {
-    // El `remove` va aqui tambien: si la pasada anterior habia ocultado la
-    // barra por ser de fuente unica, sin esto se quedaba oculta para siempre.
-    barra.classList.add("oculto");
-    $("nota-mezcla").textContent = "La casa no está consumiendo nada ahora mismo.";
-    $("ver-tabla").classList.add("oculto");
-    return;
-  }
-  $("ver-tabla").classList.remove("oculto");
-
-  // Con una sola fuente, una barra apilada seria un grafico de una sola barra:
-  // el numero ya es el grafico. Se dice con palabras y se deja la tabla para
-  // quien quiera el desglose exacto.
-  const presentes = partes.filter((x) => x.pct > 2);
-  if (presentes.length === 1) {
-    barra.classList.add("oculto");
-    leyenda.appendChild(
-      indicador(`Todo de ${presentes[0].nombre.toLowerCase()}`, vatios(total)),
-    );
-    $("nota-mezcla").textContent =
-      "Derivado del balance del inversor, no de un contador por rama.";
-    return;
-  }
-  barra.classList.remove("oculto");
-
-  for (const serie of partes) {
-    if (serie.w <= 0) continue;
-    barra.appendChild(segmento(serie));
-    leyenda.appendChild(clave(serie));
-  }
-
-  $("nota-mezcla").textContent =
-    `Total ${vatios(total)}. Derivado del balance del inversor, no de un contador por rama.`;
-}
-
-function segmento(serie) {
-  const seg = el("div", "segmento");
-  seg.style.background = serie.color;
-  seg.style.width = `${serie.pct}%`;
-  seg.tabIndex = 0;
-  seg.setAttribute("role", "img");
-  seg.setAttribute("aria-label", `${serie.nombre}: ${vatios(serie.w)}`);
-  // Etiqueta directa dentro del segmento cuando cabe. Es lo que releva el
-  // aviso de contraste del aqua en modo claro.
-  if (serie.pct > 14) seg.textContent = vatios(serie.w);
-
-  const mostrar = (ev) => mostrarPista(ev, serie.nombre, vatios(serie.w), serie.color);
-  seg.addEventListener("pointermove", mostrar);
-  seg.addEventListener("pointerleave", ocultarPista);
-  seg.addEventListener("focus", () => {
-    const r = seg.getBoundingClientRect();
-    mostrar({ clientX: r.left + r.width / 2, clientY: r.top });
-  });
-  seg.addEventListener("blur", ocultarPista);
-  return seg;
-}
-
-function clave(serie) {
-  const nodo = el("span", "clave");
-  const muestra = el("i");
-  muestra.style.background = serie.color;
-  nodo.append(
-    muestra,
-    document.createTextNode(`${serie.nombre} `),
-    el("b", null, vatios(serie.w)),
-  );
-  return nodo;
-}
-
-// Vista de tabla: todo valor de la barra es alcanzable sin pasar el ratón, que
-// es además el relevo que exige el aviso de contraste del aqua en modo claro.
-function pintarTabla(partes) {
-  const tabla = el("table");
-  const cabecera = el("tr");
-  for (const texto of ["Fuente", "Potencia", "Parte"]) {
-    cabecera.appendChild(el("th", texto === "Fuente" ? null : "num", texto));
-  }
-  tabla.appendChild(cabecera);
-  for (const serie of partes) {
-    const fila = el("tr");
-    fila.append(
-      el("td", null, serie.nombre),
-      el("td", "num", vatios(serie.w)),
-      el("td", "num", `${Math.round(serie.pct)} %`),
-    );
-    tabla.appendChild(fila);
-  }
-  $("tabla-mezcla").textContent = "";
-  $("tabla-mezcla").appendChild(tabla);
-}
-
-function pintarExcedente(datos) {
-  if (!visible("tarjeta-excedente", hayDatos(datos))) return;
-
-  const cont = $("excedente");
-  cont.textContent = "";
-  const disponible = datos.excedente.disponible_para_gastar_w;
-
-  cont.appendChild(indicador("Disponible para gastar", vatios(disponible)));
-
-  const rec = datos.recomendacion || {};
-  const lista = el("ul");
-  // Los dos bucles eran quince lineas identicas salvo el color y el prefijo.
-  for (const [aparatos, color, prefijo] of [
-    [rec.encender, "var(--bien)", "Cabe"],
-    [rec.apagar, "var(--aviso)", "Sobra encendido"],
-  ]) {
-    for (const x of aparatos || []) {
-      lista.appendChild(fila(color, `${prefijo}: ${x.nombre}`, vatios(x.consumo_w)));
-    }
-  }
-  if (!lista.children.length) {
-    lista.appendChild(el("li", "aviso", disponible > 0
-      ? "Hay excedente pero nada de lo declarado cabe en él."
-      : "No hay excedente ahora mismo."));
-  }
-  cont.appendChild(lista);
-}
-
-// Una fila de lista: punto de color (o un nodo a la izquierda), nombre que
+// Una fila de lista: algo a la izquierda (punto, avatar, ondas), nombre que
 // crece y, a la derecha, un texto o una pastilla de estado.
 function fila(color, texto, secundario, opciones = {}) {
   const li = el("li", "fila");
@@ -364,164 +151,479 @@ function fila(color, texto, secundario, opciones = {}) {
   return li;
 }
 
-// El estado de un aparato es tri-estado: encendido, apagado, o no se sabe.
-const ESTADO_APARATO = new Map([
-  [true, { color: "var(--bien)", texto: "encendido" }],
-  [false, { color: "var(--tinta-apagada)", texto: "apagado" }],
-]);
-
-function pintarDispositivos(lista) {
-  if (!visible("tarjeta-dispositivos", Array.isArray(lista) && lista.length)) return;
-
-  const ul = $("dispositivos");
-  ul.textContent = "";
-  for (const d of lista) {
-    if (d.encendido === true) ul.appendChild(fila(null, d.nombre, "encendido", { pastilla: "bien" }));
-    else if (d.encendido === false) ul.appendChild(fila(null, d.nombre, "apagado", { pastilla: "neutra" }));
-    else ul.appendChild(fila(null, d.nombre, d.categoria || "", { pastilla: "neutra" }));
-  }
-}
-
-// --- La casa segun Home Assistant ------------------------------------------
-
-function pintarLista(idTarjeta, idLista, elementos, aFila) {
-  if (!visible(idTarjeta, Array.isArray(elementos) && elementos.length)) return;
-  const ul = $(idLista);
-  ul.textContent = "";
+function lista(elementos, aFila) {
+  const ul = el("ul");
   for (const x of elementos) ul.appendChild(aFila(x));
+  return ul;
 }
 
-function pintarCasa(casa) {
-  const hay = casa && typeof casa === "object" && !casa.no_disponible;
-  if (!hay) {
-    for (const id of ["presencia", "accesos", "luces", "persianas", "clima"]) visible(`tarjeta-${id}`, false);
-    $("sistemas").textContent = "";
+// --- Pista flotante ---------------------------------------------------------
+
+const pista = $("pista-flotante");
+
+function mostrarPista(evento, nombre, valor, color) {
+  pista.textContent = "";
+  const n = el("div", "n");
+  const trazo = el("s");
+  trazo.style.background = color;
+  n.append(trazo, document.createTextNode(nombre));
+  pista.append(el("div", "v", valor), n);
+  pista.style.opacity = "1";
+  const r = pista.getBoundingClientRect();
+  const x = Math.min(evento.clientX + 12, window.innerWidth - r.width - 8);
+  pista.style.left = `${Math.max(8, x)}px`;
+  pista.style.top = `${Math.max(8, evento.clientY - r.height - 12)}px`;
+}
+
+const ocultarPista = () => { pista.style.opacity = "0"; };
+
+// --- Energia ----------------------------------------------------------------
+
+function pintarIndicadores(energia) {
+  const cont = $("indicadores");
+  cont.textContent = "";
+  if (!hayDatos(energia)) {
+    cont.appendChild(indicador("Energía", "—", "", energia?.no_disponible || "sin configurar"));
+    $("energia-origen").textContent = "";
+    pintarFlujo(null);
     return;
   }
+  const r = energia.resumen;
+  $("energia-origen").textContent = r.origen_de_los_datos ? `· ${r.origen_de_los_datos}` : "";
+  cont.append(
+    indicador("Produciendo", vatios(r.solar_w), "", "sol", "sol"),
+    indicador("Consumiendo", vatios(r.consumo_casa_w), "", "la casa"),
+    indicador(
+      r.red_estado === "exportando" ? "Vertiendo" : "Tomando",
+      vatios(Math.abs(r.red_w)), "",
+      r.red_estado === "exportando" ? "a la red" : "de la red", "red",
+    ),
+    r.bateria_soc_pct === null || r.bateria_soc_pct === undefined
+      ? indicador("Batería", "—", "", "sin lectura", "bateria")
+      : indicador("Batería", String(Math.round(r.bateria_soc_pct)), "%", r.bateria_estado, "bateria"),
+  );
+  pintarFlujo(r);
+}
 
-  pintarLista("tarjeta-presencia", "presencia", casa.presencia, (p) => {
-    const avatar = el("span", p.en_casa ? "avatar en-casa" : "avatar", (p.nombre || "?").slice(0, 1).toUpperCase());
-    return fila(null, p.nombre, p.en_casa ? "en casa" : "fuera",
-      { izquierda: avatar, pastilla: p.en_casa ? "bien" : "neutra" });
-  });
-
-  // Un acceso abierto o sin llave es lo unico del panel que pide atencion.
-  pintarLista("tarjeta-accesos", "accesos", casa.accesos, (a) =>
-    fila(null, a.nombre, a.estado, { pastilla: a.abierto ? "aviso" : "bien" }));
-
-  const luces = casa.luces;
-  if (visible("tarjeta-luces", luces && luces.total > 0)) {
-    const n = luces.encendidas.length;
-    $("luces-resumen").textContent = `${n} de ${luces.total} encendidas`;
-    const chips = $("luces");
-    chips.textContent = "";
-    for (const nombre of luces.encendidas) chips.appendChild(el("span", "chip", nombre));
-    $("luces-vacio").classList.toggle("oculto", n > 0);
+// El diagrama: sol, bateria y red alrededor de la casa. Cada linea se anima
+// en el sentido en que va la energia y se apaga cuando no pasa nada por ella.
+// Bateria positiva = cargando (de la casa hacia ella); red positiva =
+// vertiendo (de la casa hacia la red). Es el mismo signo que en el resumen.
+function pintarFlujo(r) {
+  const linea = (id, w, haciaFuera) => {
+    const n = $(id);
+    const activa = Boolean(r) && Math.abs(Number(w) || 0) >= 50;
+    n.classList.toggle("activa", activa);
+    n.classList.toggle("atras", activa && haciaFuera);
+  };
+  if (!r) {
+    for (const id of ["cifra-sol", "cifra-casa", "cifra-bateria", "cifra-red"]) $(id).textContent = "—";
+    linea("linea-sol", 0, false); linea("linea-bateria", 0, false); linea("linea-red", 0, false);
+    return;
   }
+  $("cifra-sol").textContent = vatios(r.solar_w);
+  $("cifra-casa").textContent = vatios(r.consumo_casa_w);
+  $("cifra-bateria").textContent = r.bateria_w ? vatios(Math.abs(r.bateria_w)) : "en reposo";
+  $("cifra-red").textContent = r.red_w ? vatios(Math.abs(r.red_w)) : "0 W";
+  linea("linea-sol", r.solar_w, false);
+  linea("linea-bateria", r.bateria_w, Number(r.bateria_w) < 0);
+  linea("linea-red", r.red_w, r.red_estado !== "exportando");
+}
 
-  pintarLista("tarjeta-persianas", "persianas", casa.persianas, (p) => {
-    const conPosicion = p.posicion !== null && p.posicion !== undefined;
-    if (!conPosicion) {
-      return fila(null, p.nombre, p.estado, { pastilla: p.estado === "cerrada" ? "neutra" : "cian" });
-    }
-    const barra = el("span", "barrita");
-    const dentro = el("i");
-    dentro.style.width = `${Math.max(0, Math.min(100, Number(p.posicion)))}%`;
-    barra.appendChild(dentro);
-    const derecha = el("span", "sec", `${Math.round(p.posicion)} %`);
-    const li = fila(null, p.nombre, undefined, { derecha: barra });
-    li.appendChild(derecha);
-    return li;
+function pintarBateria(energia) {
+  if (!visible("tarjeta-bateria", hayDatos(energia))) return;
+
+  const r = energia.resumen;
+  const estado = $("estado-bateria");
+  estado.textContent = "";
+  if (r.bateria_soc_pct === null || r.bateria_soc_pct === undefined) {
+    $("relleno-bateria").style.width = "0%";
+    $("soc-bateria").textContent = "—";
+    estado.textContent = "Sin lectura de la carga de la batería.";
+    return;
+  }
+  const soc = Math.max(0, Math.min(100, Number(r.bateria_soc_pct)));
+  $("relleno-bateria").style.width = `${soc}%`;
+  const socNodo = $("soc-bateria");
+  socNodo.textContent = String(Math.round(soc));
+  socNodo.appendChild(el("small", null, "%"));
+
+  // El color nunca va solo: le acompana siempre un punto y un texto.
+  let color = "var(--cian)";
+  let texto = r.bateria_estado || "";
+  if (soc < 10) { color = "var(--critico)"; texto += " · muy baja"; }
+  else if (soc < 20) { color = "var(--aviso)"; texto += " · baja"; }
+  $("relleno-bateria").style.background = color;
+
+  const punto = el("span", "punto");
+  punto.style.background = color;
+  estado.append(punto, document.createTextNode(texto));
+  if (r.bateria_w) estado.append(document.createTextNode(` a ${vatios(Math.abs(r.bateria_w))}`));
+  if (r.bateria_salud_pct !== undefined && r.bateria_salud_pct !== null) {
+    estado.append(document.createTextNode(` · salud ${Math.round(r.bateria_salud_pct)} %`));
+  }
+}
+
+const SERIES = [
+  { clave: "solar_w", nombre: "Sol", color: "var(--oro)" },
+  { clave: "bateria_w", nombre: "Batería", color: "var(--cian)" },
+  { clave: "red_w", nombre: "Red", color: "var(--malva)" },
+];
+
+function pintarMezcla(energia) {
+  if (!visible("tarjeta-mezcla", hayDatos(energia))) return;
+
+  const m = energia.mezcla;
+  const total = SERIES.reduce((suma, x) => suma + (m[x.clave] || 0), 0);
+  const partes = SERIES.map((x) => {
+    const w = m[x.clave] || 0;
+    return { ...x, w, pct: total > 0 ? (w / total) * 100 : 0 };
   });
 
-  pintarLista("tarjeta-clima", "clima", casa.clima, (c) => {
-    const grados = el("span", "grados");
-    if (c.actual !== null && c.actual !== undefined) {
-      grados.textContent = `${Number(c.actual).toLocaleString("es-ES", { maximumFractionDigits: 1 })}°`;
-    } else {
-      grados.textContent = "—";
-    }
-    if (c.objetivo !== null && c.objetivo !== undefined) {
-      grados.appendChild(el("small", null, ` → ${c.objetivo}°`));
-    }
-    const apagado = ["off", "apagada", "en reposo"].includes(c.modo);
-    const li = fila(null, c.nombre, c.modo, { pastilla: apagado ? "neutra" : "cian" });
-    li.insertBefore(grados, li.lastChild);
-    return li;
-  });
+  const barra = $("apilada");
+  const leyenda = $("leyenda");
+  barra.textContent = "";
+  leyenda.textContent = "";
+  pintarTabla(partes);
 
-  // Una tarjeta por sistema declarado en `panel:` (coche, agua, spa, riego...).
-  const cont = $("sistemas");
+  if (total <= 0) {
+    barra.classList.add("oculto");
+    $("nota-mezcla").textContent = "La casa no está consumiendo nada ahora mismo.";
+    $("ver-tabla").classList.add("oculto");
+    return;
+  }
+  $("ver-tabla").classList.remove("oculto");
+
+  // Con una sola fuente, una barra apilada seria un grafico de una sola barra:
+  // el numero ya es el grafico.
+  const presentes = partes.filter((x) => x.pct > 2);
+  if (presentes.length === 1) {
+    barra.classList.add("oculto");
+    leyenda.appendChild(indicador(`Todo de ${presentes[0].nombre.toLowerCase()}`, vatios(total)));
+    $("nota-mezcla").textContent = "Derivado del balance del inversor, no de un contador por rama.";
+    return;
+  }
+  barra.classList.remove("oculto");
+  for (const serie of partes) {
+    if (serie.w <= 0) continue;
+    barra.appendChild(segmento(serie));
+    leyenda.appendChild(clave(serie));
+  }
+  $("nota-mezcla").textContent =
+    `Total ${vatios(total)}. Derivado del balance del inversor, no de un contador por rama.`;
+}
+
+function segmento(serie) {
+  const seg = el("div", "segmento");
+  seg.style.background = serie.color;
+  seg.style.width = `${serie.pct}%`;
+  seg.tabIndex = 0;
+  seg.setAttribute("role", "img");
+  seg.setAttribute("aria-label", `${serie.nombre}: ${vatios(serie.w)}`);
+  if (serie.pct > 14) seg.textContent = vatios(serie.w);
+  const mostrar = (ev) => mostrarPista(ev, serie.nombre, vatios(serie.w), serie.color);
+  seg.addEventListener("pointermove", mostrar);
+  seg.addEventListener("pointerleave", ocultarPista);
+  seg.addEventListener("focus", () => {
+    const r = seg.getBoundingClientRect();
+    mostrar({ clientX: r.left + r.width / 2, clientY: r.top });
+  });
+  seg.addEventListener("blur", ocultarPista);
+  return seg;
+}
+
+function clave(serie) {
+  const nodo = el("span", "clave");
+  const muestra = el("i");
+  muestra.style.background = serie.color;
+  nodo.append(muestra, document.createTextNode(`${serie.nombre} `), el("b", null, vatios(serie.w)));
+  return nodo;
+}
+
+function pintarTabla(partes) {
+  const tabla = el("table");
+  const cabecera = el("tr");
+  for (const texto of ["Fuente", "Potencia", "Parte"]) {
+    cabecera.appendChild(el("th", texto === "Fuente" ? null : "num", texto));
+  }
+  tabla.appendChild(cabecera);
+  for (const serie of partes) {
+    const tr = el("tr");
+    tr.append(el("td", null, serie.nombre), el("td", "num", vatios(serie.w)),
+              el("td", "num", `${Math.round(serie.pct)} %`));
+    tabla.appendChild(tr);
+  }
+  $("tabla-mezcla").textContent = "";
+  $("tabla-mezcla").appendChild(tabla);
+}
+
+function pintarExcedente(datos) {
+  if (!visible("tarjeta-excedente", hayDatos(datos))) return;
+
+  const cont = $("excedente");
   cont.textContent = "";
-  for (const s of casa.sistemas || []) {
-    const tarjeta = el("section", "tarjeta");
-    tarjeta.appendChild(el("h2", null, s.titulo));
-    const ul = el("ul");
-    for (const l of s.lineas) {
-      const sinDato = l.valor === "sin dato" || l.valor === "sin conexion";
-      ul.appendChild(fila(null, l.nombre, l.valor, { pastilla: sinDato ? "neutra" : undefined }));
+  const disponible = datos.excedente.disponible_para_gastar_w;
+  cont.appendChild(indicador("Disponible para gastar", vatios(disponible), "", "", "sol"));
+
+  const rec = datos.recomendacion || {};
+  const ul = el("ul");
+  for (const [aparatos, pastilla, prefijo] of [
+    [rec.encender, "bien", "Cabe"],
+    [rec.apagar, "aviso", "Sobra encendido"],
+  ]) {
+    for (const x of aparatos || []) {
+      const li = fila(null, x.nombre, prefijo, { pastilla });
+      li.insertBefore(el("span", "sec", vatios(x.consumo_w)), li.lastChild);
+      ul.appendChild(li);
     }
-    tarjeta.appendChild(ul);
-    cont.appendChild(tarjeta);
+  }
+  if (!ul.children.length) {
+    ul.appendChild(el("li", "vacio", disponible > 0
+      ? "Hay excedente pero nada de lo declarado cabe en él."
+      : "No hay excedente ahora mismo."));
+  }
+  ul.style.marginTop = "12px";
+  cont.appendChild(ul);
+}
+
+// --- Inicio: la casa en losetas ---------------------------------------------
+// Cada loseta resume un sistema en una linea y, al tocarla, abre la hoja con el
+// detalle. La lista de losetas se deriva de los datos: lo que no esta
+// configurado no aparece, y no hay que tocar nada aqui para anadir un sistema
+// declarado en `panel:`.
+
+const ACTIVO = ["encendida", "encendido", "cargando", "sonando", "en marcha", "lavando",
+                "centrifug", "calentando", "abierta"];
+const SIN_DATO = ["sin dato", "sin conexion", "sin conexión"];
+
+function iconoDeSistema(titulo) {
+  const t = titulo.toLowerCase();
+  const tabla = [
+    ["coche", "coche"], ["wallbox", "coche"], ["agua", "agua"], ["ecowater", "agua"],
+    ["spa", "spa"], ["jacuzzi", "spa"], ["piscina", "spa"], ["riego", "riego"],
+    ["cine", "cine"], ["tv", "cine"], ["lavad", "lavadora"], ["cocina", "lavadora"],
+    ["videoport", "timbre"], ["portero", "timbre"], ["puerta", "candado"], ["clima", "clima"],
+  ];
+  for (const [clave, ic] of tabla) if (t.includes(clave)) return ic;
+  return "aparatos";
+}
+
+function losetasDe(datos) {
+  const salida = [];
+  const casa = hayDatos(datos.casa) ? datos.casa : null;
+
+  if (hayDatos(datos.energia)) {
+    const r = datos.energia.resumen;
+    const bat = r.bateria_soc_pct === null || r.bateria_soc_pct === undefined
+      ? "" : ` · batería ${Math.round(r.bateria_soc_pct)} %`;
+    salida.push({ id: "energia", icono: "sol", titulo: "Energía", tono: Number(r.solar_w) > 0 ? "oro" : "neutro",
+      estado: `${vatios(r.solar_w)} de sol${bat}`, ir: "energia" });
+  }
+
+  if (casa?.presencia) {
+    const dentro = casa.presencia.filter((p) => p.en_casa).map((p) => p.nombre);
+    salida.push({ id: "presencia", icono: "personas", titulo: "En casa", tono: dentro.length ? "bien" : "neutro",
+      estado: dentro.length ? dentro.join(", ") : "Nadie en casa",
+      detalle: () => lista(casa.presencia, (p) => fila(null, p.nombre, p.en_casa ? "en casa" : "fuera", {
+        izquierda: el("span", p.en_casa ? "avatar en-casa" : "avatar", (p.nombre || "?").slice(0, 1).toUpperCase()),
+        pastilla: p.en_casa ? "bien" : "neutra",
+      })) });
+  }
+
+  if (casa?.accesos?.length) {
+    const abiertos = casa.accesos.filter((a) => a.abierto);
+    salida.push({ id: "accesos", icono: "candado", titulo: "Accesos", tono: abiertos.length ? "aviso" : "bien",
+      estado: abiertos.length ? `${abiertos.map((a) => a.nombre).join(", ")}: abierto` : "Todo cerrado",
+      detalle: () => lista(casa.accesos, (a) => fila(null, a.nombre, a.estado, { pastilla: a.abierto ? "aviso" : "bien" })) });
+  }
+
+  if (casa?.luces?.total) {
+    const n = casa.luces.encendidas.length;
+    salida.push({ id: "luces", icono: "luz", titulo: "Luces", tono: n ? "oro" : "neutro",
+      estado: n ? `${n} encendida${n === 1 ? "" : "s"}: ${casa.luces.encendidas.join(", ")}` : "Todas apagadas",
+      detalle: () => {
+        if (!n) return el("p", "vacio", `Las ${casa.luces.total} luces están apagadas.`);
+        const chips = el("div", "chips");
+        for (const nombre of casa.luces.encendidas) chips.appendChild(el("span", "chip", nombre));
+        return chips;
+      } });
+  }
+
+  if (casa?.persianas?.length) {
+    const abiertas = casa.persianas.filter((p) =>
+      p.posicion !== null && p.posicion !== undefined ? p.posicion > 0 : p.estado !== "cerrada");
+    salida.push({ id: "persianas", icono: "persiana", titulo: "Persianas y toldos", tono: abiertas.length ? "activo" : "neutro",
+      estado: abiertas.length ? `${abiertas.length} de ${casa.persianas.length} abiertas` : "Todas cerradas",
+      detalle: () => lista(casa.persianas, (p) => {
+        if (p.posicion === null || p.posicion === undefined) {
+          return fila(null, p.nombre, p.estado, { pastilla: p.estado === "cerrada" ? "neutra" : "cian" });
+        }
+        const barra = el("span", "barrita");
+        const dentro = el("i");
+        dentro.style.width = `${Math.max(0, Math.min(100, Number(p.posicion)))}%`;
+        barra.appendChild(dentro);
+        const li = fila(null, p.nombre, undefined, { derecha: barra });
+        li.appendChild(el("span", "sec", `${Math.round(p.posicion)} %`));
+        return li;
+      }) });
+  }
+
+  if (casa?.clima?.length) {
+    const apagado = (c) => ["off", "apagada", "en reposo"].includes(c.modo);
+    const activos = casa.clima.filter((c) => !apagado(c));
+    const primero = activos[0] || casa.clima[0];
+    const temp = primero.actual !== null && primero.actual !== undefined ? ` · ${grados(primero.actual)} en ${primero.nombre.toLowerCase()}` : "";
+    salida.push({ id: "clima", icono: "clima", titulo: "Clima", tono: activos.length ? "activo" : "neutro",
+      estado: activos.length ? `${activos.length} en marcha${temp}` : `Apagado${temp}`,
+      detalle: () => lista(casa.clima, (c) => {
+        const g = el("span", "grados", c.actual !== null && c.actual !== undefined ? grados(c.actual) : "—");
+        if (c.objetivo !== null && c.objetivo !== undefined) g.appendChild(el("small", null, ` → ${c.objetivo}°`));
+        const li = fila(null, c.nombre, c.modo, { pastilla: apagado(c) ? "neutra" : "cian" });
+        li.insertBefore(g, li.lastChild);
+        return li;
+      }) });
+  }
+
+  if (Array.isArray(datos.dispositivos) && datos.dispositivos.length) {
+    const encendidos = datos.dispositivos.filter((d) => d.encendido === true);
+    salida.push({ id: "aparatos", icono: "aparatos", titulo: "Aparatos", tono: encendidos.length ? "activo" : "neutro",
+      estado: encendidos.length ? `${encendidos.length} encendido${encendidos.length === 1 ? "" : "s"}: ${encendidos.map((d) => d.nombre).join(", ")}` : "Todo apagado",
+      detalle: () => lista(datos.dispositivos, (d) => d.encendido === true
+        ? fila(null, d.nombre, "encendido", { pastilla: "bien" })
+        : d.encendido === false ? fila(null, d.nombre, "apagado", { pastilla: "neutra" })
+        : fila(null, d.nombre, d.categoria || "", { pastilla: "neutra" })) });
+  }
+
+  for (const s of casa?.sistemas || []) {
+    const activo = s.lineas.some((l) => ACTIVO.some((a) => String(l.valor).toLowerCase().includes(a)));
+    const util = s.lineas.filter((l) => !SIN_DATO.includes(String(l.valor).toLowerCase()));
+    const resumen = util.length ? util.slice(0, 2).map((l) => `${l.nombre}: ${l.valor}`).join(" · ") : "Sin datos todavía";
+    salida.push({ id: `sistema-${s.titulo}`, icono: iconoDeSistema(s.titulo), titulo: s.titulo,
+      tono: activo ? "activo" : "neutro", estado: resumen,
+      detalle: () => lista(s.lineas, (l) => fila(null, l.nombre, l.valor,
+        { pastilla: SIN_DATO.includes(String(l.valor).toLowerCase()) ? "neutra" : undefined })) });
+  }
+
+  if (Array.isArray(datos.musica) && datos.musica.length) {
+    const sonando = datos.musica.filter((m) => !m.error && (m.estado === "play" || m.estado === "stream"));
+    const que = (m) => [m.titulo, m.artista].filter(Boolean).join(" — ") || m.servicio || "sonando";
+    salida.push({ id: "musica", icono: "musica", titulo: "Música", tono: sonando.length ? "bien" : "neutro",
+      estado: sonando.length ? `${sonando[0].reproductor}: ${que(sonando[0])}` : "En silencio",
+      detalle: () => lista(datos.musica, (m) => {
+        if (m.error) return fila(null, m.reproductor, "no responde", { pastilla: "neutra" });
+        if (m.estado === "play" || m.estado === "stream") {
+          const ondas = el("span", "sonando");
+          ondas.append(el("i"), el("i"), el("i"));
+          return fila(null, m.reproductor, que(m), { izquierda: ondas });
+        }
+        return fila(null, m.reproductor, "en silencio", { pastilla: "neutra" });
+      }) });
+  }
+
+  if (datos.red && typeof datos.red === "object" && !datos.red.no_disponible && Object.keys(datos.red).length) {
+    const red = datos.red;
+    const nombres = new Map([["wan", "Internet"], ["wlan", "WiFi"], ["lan", "Cable"], ["vpn", "VPN"]]);
+    const partes = [...nombres].filter(([k]) => red[k]);
+    const mal = partes.filter(([k]) => red[k].estado !== "ok");
+    const wifi = red.wlan?.usuarios;
+    salida.push({ id: "red", icono: "wifi", titulo: "Red", tono: mal.length ? "critico" : "bien",
+      estado: mal.length ? `${mal.map(([, n]) => n).join(", ")} con problemas` : `Todo bien${wifi ? ` · ${wifi} en la WiFi` : ""}`,
+      detalle: () => lista(partes, ([k, etiqueta]) => {
+        const s = red[k];
+        const bien = s.estado === "ok";
+        let detalle = "";
+        if (k === "wan" && s.latencia_ms !== undefined && s.latencia_ms !== null) detalle = `${s.latencia_ms} ms`;
+        else if (s.usuarios !== undefined && s.usuarios !== null) detalle = `${s.usuarios} conectados`;
+        if (s.caidos) detalle += ` · ${s.caidos} caídos`;
+        const li = fila(null, etiqueta, bien ? "bien" : (s.estado || "?"), { pastilla: bien ? "bien" : "critico" });
+        if (detalle) li.insertBefore(el("span", "sec", detalle), li.lastChild);
+        return li;
+      }) });
+  }
+
+  if (Array.isArray(datos.camaras) && datos.camaras.length) {
+    salida.push({ id: "camaras", icono: "camara", titulo: "Cámaras", tono: "neutro",
+      estado: datos.camaras.map((c) => c.nombre).join(", "), ir: "camaras" });
+  }
+  return salida;
+}
+
+function pintarLosetas(datos) {
+  const cont = $("losetas");
+  cont.textContent = "";
+  const losetas = losetasDe(datos);
+  for (const l of losetas) {
+    const b = el("button", `loseta ${l.tono}`);
+    b.type = "button";
+    const ic = el("span", "ic");
+    ic.appendChild(icono(l.icono));
+    b.append(ic, el("span", "nombre", l.titulo), el("span", "estado", l.estado));
+    b.addEventListener("click", () => {
+      if (l.ir) irA(l.ir);
+      else abrirHoja(l);
+    });
+    cont.appendChild(b);
+  }
+  if (!losetas.length) cont.appendChild(el("p", "vacio", "Todavía no hay nada configurado. Empieza por /verificar en Telegram."));
+
+  // La banda de arriba: lo unico que pide atencion de un vistazo.
+  const aviso = $("aviso-casa");
+  aviso.textContent = "";
+  const abiertos = (hayDatos(datos.casa) ? datos.casa.accesos || [] : []).filter((a) => a.abierto);
+  if (abiertos.length) {
+    aviso.className = "aviso-casa";
+    aviso.append(icono("alerta"), el("span", null, `${abiertos.map((a) => a.nombre).join(" y ")}: abierto`));
+  } else if (hayDatos(datos.casa) && (datos.casa.accesos || []).length) {
+    aviso.className = "aviso-casa tranquilo";
+    aviso.append(icono("bien"), el("span", null, "Todo cerrado"));
+  } else {
+    aviso.classList.add("oculto");
   }
 }
 
-// Lo que suena en cada reproductor. Un reproductor apagado no es un error del
-// panel: se dice y se sigue.
-function pintarMusica(lista) {
-  if (!visible("tarjeta-musica", Array.isArray(lista) && lista.length)) return;
+// --- Hoja de detalle --------------------------------------------------------
 
-  const ul = $("musica");
-  ul.textContent = "";
-  for (const m of lista) {
-    const nombre = m.zona && m.zona !== m.reproductor.toLowerCase() ? `${m.reproductor} · ${m.zona}` : m.reproductor;
-    if (m.error) {
-      ul.appendChild(fila(null, nombre, "no responde", { pastilla: "neutra" }));
-    } else if (m.estado === "play" || m.estado === "stream") {
-      const ondas = el("span", "sonando");
-      ondas.append(el("i"), el("i"), el("i"));
-      const que = [m.titulo, m.artista].filter(Boolean).join(" — ") || m.servicio || "sonando";
-      ul.appendChild(fila(null, nombre, que, { izquierda: ondas }));
-    } else {
-      ul.appendChild(fila(null, nombre, "en silencio", { pastilla: "neutra" }));
-    }
-  }
+function abrirHoja(loseta) {
+  $("hoja-titulo").textContent = loseta.titulo;
+  const ic = $("hoja-icono");
+  ic.textContent = "";
+  ic.appendChild(icono(loseta.icono));
+  const cuerpo = $("hoja-cuerpo");
+  cuerpo.textContent = "";
+  cuerpo.appendChild(loseta.detalle());
+  const hoja = $("hoja");
+  if (typeof hoja.showModal === "function") hoja.showModal(); else hoja.setAttribute("open", "");
 }
 
-// La salud de la red segun UniFi: internet, wifi y cable. Nada de lo que
-// pinta aqui permite tocar la red; eso va por el chat y con confirmacion.
-const SUBSISTEMAS_RED = new Map([
-  ["wan", "Internet"], ["wlan", "WiFi"], ["lan", "Cable"], ["vpn", "VPN"],
-]);
+$("hoja-cerrar").addEventListener("click", () => $("hoja").close());
+$("hoja").addEventListener("click", (e) => { if (e.target === $("hoja")) $("hoja").close(); });
 
-function pintarRed(red) {
-  if (!visible("tarjeta-red", red && typeof red === "object" && !red.no_disponible
-      && Object.keys(red).length)) return;
+// --- Pestanas ---------------------------------------------------------------
 
-  const ul = $("red");
-  ul.textContent = "";
-  for (const [clave, etiqueta] of SUBSISTEMAS_RED) {
-    const s = red[clave];
-    if (!s) continue;
-    const bien = s.estado === "ok";
-    let detalle = "";
-    if (clave === "wan" && s.latencia_ms !== undefined && s.latencia_ms !== null) {
-      detalle = `${s.latencia_ms} ms`;
-    } else if (s.usuarios !== undefined && s.usuarios !== null) {
-      detalle = `${s.usuarios} conectados`;
-    }
-    if (s.caidos) detalle += ` · ${s.caidos} caídos`;
-    const li = fila(null, etiqueta, bien ? "bien" : (s.estado || "?"),
-      { pastilla: bien ? "bien" : "critico" });
-    if (detalle) li.insertBefore(el("span", "sec", detalle), li.lastChild);
-    ul.appendChild(li);
-  }
+function irA(vista) {
+  for (const s of document.querySelectorAll("[data-vista]")) s.classList.toggle("activa", s.dataset.vista === vista);
+  for (const b of document.querySelectorAll("#pestanas button")) b.classList.toggle("activa", b.dataset.ir === vista);
+  try { localStorage.setItem(CLAVE_VISTA, vista); } catch { /* nada */ }
+  window.scrollTo({ top: 0 });
+  if (vista === "camaras" && ultimosDatos) pintarCamaras(ultimosDatos.camaras);
 }
 
-async function pintarCamaras(camaras) {
-  if (!visible("tarjeta-camaras", Array.isArray(camaras) && camaras.length)) return;
+for (const b of document.querySelectorAll("#pestanas button")) {
+  b.querySelector(".pastilla-icono").appendChild(icono(b.querySelector(".pastilla-icono").dataset.icono));
+  b.addEventListener("click", () => irA(b.dataset.ir));
+}
+
+// --- Camaras ----------------------------------------------------------------
+
+async function pintarCamaras(camaras, forzar = false) {
+  const hay = Array.isArray(camaras) && camaras.length;
+  visible("camaras-vacio", !hay);
   const cont = $("camaras");
-  if (cont.children.length === camaras.length) return;  // ya montadas
+  if (!hay) { cont.textContent = ""; return; }
+  // Solo se piden capturas con la pestana de camaras a la vista, y una vez
+  // por visita (o al pulsar Actualizar): cada captura es una peticion a Protect.
+  if (!document.querySelector('[data-vista="camaras"]').classList.contains("activa")) return;
+  if (!forzar && cont.children.length === camaras.length) return;
 
   cont.textContent = "";
   for (const c of camaras) {
@@ -532,7 +634,6 @@ async function pintarCamaras(camaras) {
     const pie = el("figcaption", null, zonaDistinta ? `${c.nombre} · ${c.zona}` : c.nombre);
     fig.append(img, pie);
     cont.appendChild(fig);
-    // Fetch en vez de src directo: la imagen necesita la cabecera del token.
     try {
       const r = await pedir(`api/panel/camara/${encodeURIComponent(c.nombre)}`);
       img.src = URL.createObjectURL(await r.blob());
@@ -542,28 +643,68 @@ async function pintarCamaras(camaras) {
   }
 }
 
-// El saludo: por la hora del dia y, si el backend sabe quien mira, con su nombre.
+$("refrescar-camaras").addEventListener("click", () => {
+  if (ultimosDatos) pintarCamaras(ultimosDatos.camaras, true);
+});
+
+// --- Jarvis (chat) ----------------------------------------------------------
+
+function burbuja(clase, texto) {
+  const b = el("div", `burbuja ${clase}`, texto);
+  $("hilo").appendChild(b);
+  b.scrollIntoView({ block: "nearest" });
+  return b;
+}
+
+async function preguntar(mensaje) {
+  mensaje = mensaje.trim();
+  if (!mensaje) return;
+  $("bienvenida").classList.add("oculto");
+  $("sugerencias").classList.add("oculto");
+  $("mensaje").value = "";
+  burbuja("yo", mensaje);
+  const espera = burbuja("jarvis pensando", "Pensando…");
+  try {
+    const r = await pedir("chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mensaje, hilo: "panel" }),
+    });
+    espera.textContent = (await r.json()).respuesta;
+  } catch (e) {
+    espera.textContent = `No he podido responder: ${e.message}`;
+  }
+  espera.classList.remove("pensando");
+  await refrescar();
+}
+
+$("enviar").addEventListener("click", () => preguntar($("mensaje").value));
+$("mensaje").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); preguntar($("mensaje").value); }
+});
+for (const b of document.querySelectorAll("#sugerencias button")) {
+  b.addEventListener("click", () => preguntar(b.textContent));
+}
+
+// --- Saludo y ciclo ---------------------------------------------------------
+
 function saludo(quien) {
   const h = new Date().getHours();
   const base = h < 6 ? "Buenas noches" : h < 14 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches";
   return quien ? `${base}, ${quien}` : base;
 }
 
-// --- Ciclo ------------------------------------------------------------------
-
 async function refrescar() {
   try {
     const datos = await (await pedir("api/panel")).json();
+    ultimosDatos = datos;
     $("momento").textContent = datos.momento;
     $("saludo").textContent = saludo(datos.quien);
+    pintarLosetas(datos);
     pintarIndicadores(datos.energia);
     pintarBateria(datos.energia);
     pintarMezcla(datos.energia);
     pintarExcedente(datos.excedente);
-    pintarCasa(datos.casa);
-    pintarDispositivos(datos.dispositivos);
-    pintarMusica(datos.musica);
-    pintarRed(datos.red);
     pintarCamaras(datos.camaras);
   } catch (e) {
     $("momento").textContent = `sin datos: ${e.message}`;
@@ -581,7 +722,11 @@ async function entrar() {
   }
   $("acceso").classList.add("oculto");
   $("contenido").classList.remove("oculto");
+  $("pestanas").classList.remove("oculto");
   $("salir").classList.remove("oculto");
+  let vista = "inicio";
+  try { vista = localStorage.getItem(CLAVE_VISTA) || "inicio"; } catch { /* nada */ }
+  irA(document.querySelector(`[data-vista="${vista}"]`) ? vista : "inicio");
   await refrescar();
   // Limpiar antes de armar: dos clics en Entrar dejaban dos temporizadores y
   // olvidarToken() solo cancelaba el ultimo.
@@ -589,8 +734,7 @@ async function entrar() {
 }
 
 // Con la pestana en segundo plano no hay nadie mirando, y cada pasada son
-// varias lecturas a Home Assistant y al inversor: seis por minuto durante
-// horas por un panel que alguien dejo abierto en otra ventana.
+// varias lecturas a Home Assistant y al inversor.
 function armarRefresco() {
   if (temporizador) clearInterval(temporizador);
   temporizador = document.hidden ? null : setInterval(refrescar, REFRESCO_MS);
@@ -621,26 +765,3 @@ $("tema").addEventListener("click", () => {
         && window.matchMedia("(prefers-color-scheme: dark)").matches);
   raiz.setAttribute("data-theme", oscuro ? "light" : "dark");
 });
-
-$("mensaje").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("enviar").click(); }
-});
-$("enviar").addEventListener("click", async () => {
-  const mensaje = $("mensaje").value.trim();
-  if (!mensaje) return;
-  $("respuesta").classList.add("con-texto");
-  $("respuesta").textContent = "Pensando…";
-  try {
-    const r = await pedir("chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mensaje, hilo: "panel" }),
-    });
-    $("respuesta").textContent = (await r.json()).respuesta;
-  } catch (e) {
-    $("respuesta").textContent = `Error: ${e.message}`;
-  }
-  await refrescar();
-});
-
-if (token()) { entrar(); } else { $("acceso").classList.remove("oculto"); }

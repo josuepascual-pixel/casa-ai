@@ -11,37 +11,36 @@
   /* Paleta con dos valores por token: `light-dark()` elige por `color-scheme`,
      asi que el boton de tema solo cambia ese, y sin eleccion manda el sistema.
      El oro y el cian son los del proyecto (Jarvis); el resto son neutros con
-     un punto de azul, elegidos y no heredados. Los colores de severidad
-     significan lo mismo en los dos temas. */
+     un punto de azul. Los colores de severidad significan lo mismo en los dos
+     temas. */
   :root {
     color-scheme: light dark;
     --plano:         light-dark(#eef0f5, #090c13);
     --superficie:    light-dark(#ffffff, #10151f);
-    --superficie-2:  light-dark(#f5f6fa, #161c29);
+    --superficie-2:  light-dark(#f4f5f9, #161c29);
     --tinta:         light-dark(#111726, #eef2f8);
     --tinta-2:       light-dark(#5a6479, #9aa6bb);
     --tinta-apagada: light-dark(#8b94a8, #667083);
     --linea:         light-dark(#e3e6ee, #1f2735);
     --borde:         light-dark(rgba(17,23,38,0.08), rgba(255,255,255,0.08));
     --oro:           light-dark(#a8781f, #e0b354);
-    --oro-suave:     light-dark(#fff4dc, #2a2210);
+    --oro-suave:     light-dark(#fff1d6, #2a2210);
     --cian:          light-dark(#137fc2, #5cc8ff);
-    --cian-suave:    light-dark(#e3f3ff, #0f2536);
+    --cian-suave:    light-dark(#e1f1fd, #0f2536);
     --malva:         light-dark(#6f4fd0, #b48ef0);
     --malva-suave:   light-dark(#efe9ff, #241b3a);
     --bien:          light-dark(#1e8f5a, #3ecf8e);
-    --bien-suave:    light-dark(#e2f6ec, #0f2a1e);
+    --bien-suave:    light-dark(#dff5ea, #0f2a1e);
     --aviso:         light-dark(#b06a00, #f5a623);
-    --aviso-suave:   light-dark(#fff1dc, #302008);
+    --aviso-suave:   light-dark(#fff0d6, #302008);
     --critico:       light-dark(#c73838, #ff6b6b);
     --critico-suave: light-dark(#ffe5e5, #351616);
-    --sombra:        light-dark(0 1px 2px rgba(17,23,38,.06), 0 1px 0 rgba(255,255,255,.03) inset);
-    --radio: 16px;
+    --velo:          light-dark(rgba(238,240,245,.85), rgba(9,12,19,.8));
+    --radio: 18px;
     --fuente-ui: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
     --fuente-cifra: "Sora", "IBM Plex Sans", -apple-system, system-ui, sans-serif;
     --fuente-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
     padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   :root[data-theme="light"] { color-scheme: light; }
   :root[data-theme="dark"]  { color-scheme: dark; }
@@ -49,51 +48,99 @@
   * { box-sizing: border-box; }
   html { height: 100%; }
   body {
-    margin: 0; min-height: 100%; padding-block: 18px 48px; padding-inline: 16px;
+    margin: 0; min-height: 100%;
+    padding-block: 16px calc(84px + env(safe-area-inset-bottom, 0px)); padding-inline: 16px;
     background: var(--plano); color: var(--tinta);
-    font: 15px/1.5 var(--fuente-ui);
-    -webkit-font-smoothing: antialiased;
+    font: 15px/1.45 var(--fuente-ui); -webkit-font-smoothing: antialiased;
   }
   .envoltura { max-width: 1080px; margin: 0 auto; }
+  button { font: 500 14px var(--fuente-ui); cursor: pointer; }
+  button:focus-visible, .loseta:focus-visible { outline: 2px solid var(--cian); outline-offset: 2px; }
+  .oculto { display: none !important; }
 
   /* --- Cabecera ------------------------------------------------------- */
-  .cabecera { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
-  .marca { display: flex; align-items: center; gap: 12px; }
-  .reactor { width: 40px; height: 40px; flex: none; color: var(--cian);
+  .cabecera { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .reactor { width: 42px; height: 42px; flex: none; color: var(--cian);
              filter: drop-shadow(0 0 8px color-mix(in oklab, var(--cian) 55%, transparent)); }
   .reactor .nucleo { animation: latir 3s ease-in-out infinite; transform-origin: 50% 50%; }
   @keyframes latir { 0%, 100% { opacity: .75; transform: scale(.94); } 50% { opacity: 1; transform: scale(1); } }
-  h1 { font: 700 22px/1.1 var(--fuente-cifra); margin: 0; letter-spacing: -0.01em; }
-  .saludo { margin: 2px 0 0; color: var(--tinta-2); font-size: 14px; }
-  .acciones { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .titulo h1 { font: 700 22px/1.1 var(--fuente-cifra); margin: 0; letter-spacing: -0.01em; }
+  .titulo { min-width: 0; flex: 1; }
+  .titulo p { margin: 2px 0 0; color: var(--tinta-2); font-size: 14px; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+  .acciones { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
   .momento { color: var(--tinta-apagada); font: 12px var(--fuente-mono); }
-  button {
-    font: 500 14px var(--fuente-ui); padding: 8px 14px; border-radius: 10px; cursor: pointer;
-    border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta-2);
-  }
-  button:hover { color: var(--tinta); border-color: var(--tinta-apagada); }
-  button:focus-visible { outline: 2px solid var(--cian); outline-offset: 2px; }
-  .icono { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; font-size: 16px; }
-  .primario { background: var(--tinta); color: var(--plano); border-color: transparent; }
-  .primario:hover { color: var(--plano); opacity: .92; }
+  @media (max-width: 520px) { .momento { display: none; } .boton:not(.icono-boton) { padding-inline: 10px; } }
+  .boton { padding: 8px 14px; border-radius: 12px; border: 1px solid var(--borde);
+           background: var(--superficie); color: var(--tinta-2); }
+  .boton:hover { color: var(--tinta); }
+  .icono-boton { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; font-size: 16px; }
+  .primario { background: var(--cian); color: #04121c; border-color: transparent; font-weight: 600; }
 
-  /* --- Tarjetas y rejilla --------------------------------------------- */
+  /* --- Vistas y pestanas ---------------------------------------------- */
+  [data-vista] { display: none; }
+  [data-vista].activa { display: block; }
+  .pestanas {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    display: flex; justify-content: center; gap: 4px;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--velo); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--borde);
+  }
+  .pestanas button {
+    flex: 1; max-width: 150px; display: grid; justify-items: center; gap: 3px;
+    padding: 6px 4px; border: 0; background: none; color: var(--tinta-apagada);
+    font: 500 11px var(--fuente-ui); border-radius: 12px;
+  }
+  .pestanas button svg { width: 24px; height: 24px; }
+  .pestanas button.activa { color: var(--cian); }
+  .pestanas button.activa .pastilla-icono { background: var(--cian-suave); }
+  .pastilla-icono { display: grid; place-items: center; width: 48px; height: 30px; border-radius: 999px; }
+
+  /* --- Inicio: aviso y losetas ---------------------------------------- */
+  .aviso-casa {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px;
+    background: var(--aviso-suave); color: var(--aviso); font-weight: 500; margin-bottom: 14px;
+  }
+  .aviso-casa svg { width: 22px; height: 22px; flex: none; }
+  .aviso-casa.tranquilo { background: var(--bien-suave); color: var(--bien); }
+  .seccion-titulo { font: 500 11px var(--fuente-mono); letter-spacing: .14em; text-transform: uppercase;
+                    color: var(--tinta-2); margin: 18px 0 10px; }
+  .losetas { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .loseta {
+    display: grid; gap: 10px; text-align: left; padding: 14px; min-height: 118px;
+    border-radius: var(--radio); border: 1px solid var(--borde); background: var(--superficie);
+    color: var(--tinta); cursor: pointer; transition: transform .08s ease;
+  }
+  .loseta:active { transform: scale(.98); }
+  .loseta .ic { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
+                background: var(--superficie-2); color: var(--tinta-2); }
+  .loseta .ic svg { width: 24px; height: 24px; }
+  .loseta .nombre { font: 600 15px/1.2 var(--fuente-cifra); }
+  .loseta .estado { font-size: 13px; color: var(--tinta-2); line-height: 1.3;
+                    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .loseta.activo .ic { background: var(--cian-suave); color: var(--cian); }
+  .loseta.oro .ic { background: var(--oro-suave); color: var(--oro); }
+  .loseta.bien .ic { background: var(--bien-suave); color: var(--bien); }
+  .loseta.aviso .ic { background: var(--aviso-suave); color: var(--aviso); }
+  .loseta.aviso { border-color: color-mix(in oklab, var(--aviso) 45%, var(--borde)); }
+  .loseta.critico .ic { background: var(--critico-suave); color: var(--critico); }
+  .loseta.activo .estado, .loseta.oro .estado, .loseta.bien .estado { color: var(--tinta); }
+  .loseta.aviso .estado { color: var(--aviso); font-weight: 500; }
+
+  /* --- Tarjetas (vista de energia) ------------------------------------ */
   .tarjeta {
     background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio);
-    padding: 18px; box-shadow: var(--sombra); min-width: 0;
+    padding: 18px; min-width: 0;
   }
   .tarjeta > h2 {
     margin: 0 0 14px; display: flex; align-items: center; gap: 10px;
-    font: 500 11px var(--fuente-mono); letter-spacing: .14em; text-transform: uppercase;
-    color: var(--tinta-2);
+    font: 500 11px var(--fuente-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--tinta-2);
   }
   .tarjeta > h2::after { content: ""; flex: 1; height: 1px; background: var(--linea); }
   .tarjeta > h2 .cuenta { color: var(--tinta-apagada); letter-spacing: 0; text-transform: none; }
-  .rejilla { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
-  .rejilla .ancha { grid-column: 1 / -1; }
-  .hero { margin-bottom: 14px; }
-
-  /* --- Flujo de energia ----------------------------------------------- */
+  .rejilla { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .hero { margin-bottom: 12px; }
   .flujo { display: grid; gap: 18px; grid-template-columns: minmax(260px, 1.1fr) minmax(220px, 1fr); align-items: center; }
   @media (max-width: 720px) { .flujo { grid-template-columns: 1fr; } }
   .diagrama { width: 100%; height: auto; max-width: 100%; display: block; }
@@ -106,31 +153,25 @@
   .diagrama .linea.activa.atras { animation-direction: reverse; }
   @keyframes fluir { to { stroke-dashoffset: -28; } }
   .indicadores { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
-  .indicador { background: var(--superficie-2); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .indicador { background: var(--superficie-2); border-radius: 14px; padding: 12px 14px; min-width: 0; }
   .indicador .etiqueta { font: 500 11px var(--fuente-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-2); }
-  .indicador .valor { font: 600 26px/1.15 var(--fuente-cifra); letter-spacing: -0.02em; margin-top: 4px;
-                      font-variant-numeric: tabular-nums; }
+  .indicador .valor { font: 600 26px/1.15 var(--fuente-cifra); letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
   .indicador .unidad { font-size: 14px; font-weight: 500; color: var(--tinta-2); }
   .indicador .pie { font-size: 12px; color: var(--tinta-apagada); margin-top: 2px; }
   .indicador.sol .valor { color: var(--oro); }
   .indicador.bateria .valor { color: var(--cian); }
   .indicador.red .valor { color: var(--malva); }
-
-  /* --- Bateria -------------------------------------------------------- */
   .bateria { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
   .pila { position: relative; height: 26px; border: 2px solid var(--tinta-2); border-radius: 8px; padding: 3px; margin-right: 6px; }
-  .pila::after { content: ""; position: absolute; right: -8px; top: 6px; width: 5px; height: 12px;
-                 background: var(--tinta-2); border-radius: 0 2px 2px 0; }
+  .pila::after { content: ""; position: absolute; right: -8px; top: 6px; width: 5px; height: 12px; background: var(--tinta-2); border-radius: 0 2px 2px 0; }
   .relleno { height: 100%; width: 0; border-radius: 4px; background: var(--cian); transition: width .5s ease; }
   .soc { font: 600 30px/1 var(--fuente-cifra); font-variant-numeric: tabular-nums; }
   .soc small { font: 500 13px var(--fuente-ui); color: var(--tinta-2); margin-left: 2px; }
-  .estado { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tinta-2); margin-top: 12px; }
+  .estado-linea { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tinta-2); margin-top: 12px; }
   .punto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-
-  /* --- Mezcla apilada ------------------------------------------------- */
   .apilada { display: flex; gap: 3px; height: 22px; }
-  .segmento { position: relative; min-width: 4px; overflow: hidden; display: flex; align-items: center;
-              justify-content: center; font: 600 11px var(--fuente-mono); color: #fff; border-radius: 3px; }
+  .segmento { position: relative; min-width: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+              font: 600 11px var(--fuente-mono); color: #fff; border-radius: 3px; }
   .segmento:first-child { border-radius: 8px 3px 3px 8px; }
   .segmento:last-child  { border-radius: 3px 8px 8px 3px; }
   .segmento:only-child  { border-radius: 8px; }
@@ -143,26 +184,25 @@
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--linea); }
   th { color: var(--tinta-2); font: 500 11px var(--fuente-mono); letter-spacing: .1em; text-transform: uppercase; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .aviso-texto { color: var(--tinta-apagada); font-size: 13px; margin: 0 0 10px; }
 
-  /* --- Listas y pastillas --------------------------------------------- */
+  /* --- Filas, pastillas y demas (hoja de detalle) --------------------- */
   ul { list-style: none; margin: 0; padding: 0; }
-  .fila { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--linea); }
+  .fila { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--linea); }
   ul > .fila:first-child { border-top: 0; padding-top: 0; }
   .fila .crece { flex: 1; min-width: 0; overflow-wrap: anywhere; }
   .fila .sec { color: var(--tinta-2); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
-  .pastilla { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  .pastilla { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
               font: 500 12px var(--fuente-ui); white-space: nowrap; }
   .pastilla.bien { background: var(--bien-suave); color: var(--bien); }
   .pastilla.aviso { background: var(--aviso-suave); color: var(--aviso); }
   .pastilla.critico { background: var(--critico-suave); color: var(--critico); }
   .pastilla.neutra { background: var(--superficie-2); color: var(--tinta-2); }
   .pastilla.cian { background: var(--cian-suave); color: var(--cian); }
-  .pastilla.oro { background: var(--oro-suave); color: var(--oro); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { padding: 5px 11px; border-radius: 999px; background: var(--oro-suave); color: var(--oro);
-          font-size: 13px; font-weight: 500; }
-  .vacio { color: var(--tinta-apagada); font-size: 13px; margin: 0; }
-  .avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  .chip { padding: 6px 12px; border-radius: 999px; background: var(--oro-suave); color: var(--oro); font-size: 13px; font-weight: 500; }
+  .vacio { color: var(--tinta-apagada); font-size: 14px; margin: 0; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none;
             font: 600 13px var(--fuente-cifra); background: var(--superficie-2); color: var(--tinta-2); }
   .avatar.en-casa { background: var(--bien-suave); color: var(--bien); }
   .barrita { width: 90px; height: 6px; border-radius: 999px; background: var(--linea); overflow: hidden; flex: none; }
@@ -174,68 +214,84 @@
   .sonando i:nth-child(2) { animation-delay: .15s; } .sonando i:nth-child(3) { animation-delay: .3s; }
   @keyframes onda { 0%, 100% { height: 4px; } 50% { height: 14px; } }
 
-  /* --- Camaras -------------------------------------------------------- */
-  .camaras { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-  .camaras figure { margin: 0; position: relative; border-radius: 12px; overflow: hidden; background: var(--superficie-2); }
-  .camaras img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; }
-  .camaras figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 10px 8px;
-    font: 500 12px var(--fuente-ui); color: #fff;
-    background: linear-gradient(to top, rgba(0,0,0,.65), transparent); }
+  /* --- Hoja de detalle ------------------------------------------------ */
+  .hoja { border: 0; padding: 0; width: 100%; max-width: 640px; max-height: 82vh; overflow: auto;
+          border-radius: 22px 22px 0 0; background: var(--superficie); color: var(--tinta);
+          margin: auto auto 0; box-shadow: 0 -10px 40px rgba(0,0,0,.25); }
+  @media (min-width: 700px) { .hoja { margin: auto; border-radius: 22px; } }
+  .hoja::backdrop { background: rgba(0,0,0,.45); backdrop-filter: blur(2px); }
+  .hoja-cabecera { position: sticky; top: 0; display: flex; align-items: center; gap: 12px; padding: 16px 18px 12px;
+                   background: var(--superficie); border-bottom: 1px solid var(--linea); }
+  .hoja-cabecera .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--superficie-2); color: var(--tinta-2); }
+  .hoja-cabecera .ic svg { width: 22px; height: 22px; }
+  .hoja-cabecera h2 { margin: 0; font: 600 18px var(--fuente-cifra); flex: 1; }
+  .hoja-cuerpo { padding: 14px 18px calc(18px + env(safe-area-inset-bottom, 0px)); }
 
-  /* --- Chat ----------------------------------------------------------- */
-  .charla { border-color: color-mix(in oklab, var(--cian) 35%, var(--borde)); }
-  .entrada { display: flex; gap: 10px; align-items: stretch; }
+  /* --- Camaras -------------------------------------------------------- */
+  .camaras { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .camaras figure { margin: 0; position: relative; border-radius: 16px; overflow: hidden; background: var(--superficie-2); }
+  .camaras img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; }
+  .camaras figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px;
+    font: 600 13px var(--fuente-ui); color: #fff; background: linear-gradient(to top, rgba(0,0,0,.7), transparent); }
+  .cabecera-vista { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .cabecera-vista h2 { margin: 0; font: 600 18px var(--fuente-cifra); flex: 1; }
+
+  /* --- Jarvis (chat) -------------------------------------------------- */
+  .hilo { display: grid; gap: 10px; margin-bottom: 14px; }
+  .burbuja { max-width: 86%; padding: 12px 14px; border-radius: 18px; white-space: pre-wrap; line-height: 1.45; }
+  .burbuja.yo { justify-self: end; background: var(--cian); color: #04121c; border-bottom-right-radius: 6px; }
+  .burbuja.jarvis { justify-self: start; background: var(--superficie); border: 1px solid var(--borde); border-bottom-left-radius: 6px; }
+  .burbuja.pensando { color: var(--tinta-apagada); font-style: italic; }
+  .entrada { display: flex; gap: 10px; align-items: flex-end; position: sticky; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
   .entrada textarea {
-    flex: 1; min-height: 46px; resize: vertical; padding: 12px 14px; border-radius: 12px;
-    border: 1px solid var(--borde); background: var(--superficie-2); color: var(--tinta);
-    font: 15px/1.4 var(--fuente-ui);
+    flex: 1; min-height: 48px; max-height: 160px; resize: none; padding: 13px 16px; border-radius: 24px;
+    border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta); font: 15px/1.4 var(--fuente-ui);
   }
   .entrada textarea:focus-visible { outline: 2px solid var(--cian); outline-offset: 1px; }
-  .respuesta { display: none; margin-top: 12px; padding: 12px 14px; border-radius: 12px;
-    background: var(--cian-suave); border-left: 3px solid var(--cian); white-space: pre-wrap; }
-  .respuesta.con-texto { display: block; }
+  .entrada .primario { height: 48px; border-radius: 24px; padding-inline: 18px; }
+  .sugerencias { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .sugerencias button { padding: 8px 12px; border-radius: 999px; border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta-2); }
+  .bienvenida { text-align: center; padding: 26px 10px 10px; color: var(--tinta-2); }
+  .bienvenida .reactor { width: 64px; height: 64px; margin: 0 auto 10px; display: block; }
+  .bienvenida h2 { margin: 0 0 4px; font: 600 20px var(--fuente-cifra); color: var(--tinta); }
 
   /* --- Acceso con token (fuera del ingress) --------------------------- */
+  #acceso { max-width: 480px; }
   #acceso input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--borde);
     background: var(--superficie-2); color: var(--tinta); font: 15px var(--fuente-ui); }
   #acceso code { font-family: var(--fuente-mono); font-size: .9em; }
 
   #pista-flotante {
     position: fixed; pointer-events: none; opacity: 0; transition: opacity .1s;
-    background: var(--superficie); border: 1px solid var(--borde);
-    border-radius: 10px; padding: 8px 10px; font-size: 13px;
-    box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 10;
+    background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 8px 10px;
+    font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 30;
   }
   #pista-flotante .v { font: 600 15px var(--fuente-cifra); color: var(--tinta); }
   #pista-flotante .n { color: var(--tinta-2); display: flex; align-items: center; gap: 6px; }
   #pista-flotante .n s { width: 12px; height: 2px; text-decoration: none; flex: none; }
-  .oculto { display: none !important; }
-  .aviso-texto { color: var(--tinta-apagada); font-size: 13px; margin: 0 0 10px; }
 
   @media (prefers-reduced-motion: reduce) {
     .reactor .nucleo, .diagrama .linea.activa, .sonando i { animation: none; }
-    .relleno { transition: none; }
+    .relleno, .loseta { transition: none; }
   }
 </style>
 </head>
 <body>
 <div class="envoltura">
   <header class="cabecera">
-    <div class="marca">
-      <svg class="reactor" viewBox="0 0 40 40" aria-hidden="true">
-        <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="2" opacity=".35"/>
-        <circle cx="20" cy="20" r="12" fill="none" stroke="currentColor" stroke-width="2.5"/>
-        <circle class="nucleo" cx="20" cy="20" r="5" fill="currentColor"/>
-      </svg>
-      <div>
-        <h1>Jarvis</h1>
-        <p class="saludo" id="saludo">Buenos días</p>
-      </div>
+    <svg class="reactor" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="2" opacity=".35"/>
+      <circle cx="20" cy="20" r="12" fill="none" stroke="currentColor" stroke-width="2.5"/>
+      <circle class="nucleo" cx="20" cy="20" r="5" fill="currentColor"/>
+    </svg>
+    <div class="titulo">
+      <h1>Jarvis</h1>
+      <p id="saludo">Buenos días</p>
     </div>
     <div class="acciones">
       <span class="momento" id="momento"></span>
-      <button id="tema" class="icono" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
-      <button id="salir" class="oculto">Olvidar token</button>
+      <button id="tema" class="boton icono-boton" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
+      <button id="salir" class="boton oculto">Olvidar token</button>
     </div>
   </header>
 
@@ -244,144 +300,140 @@
     <p class="aviso-texto">Dentro de Home Assistant no hace falta: el panel sabe quién eres por tu
       sesión. Fuera, el token es el de <code>API_TOKEN</code> y se olvida al cerrar la pestaña.</p>
     <input id="token" type="password" placeholder="API_TOKEN" autocomplete="off">
-    <button id="entrar" class="primario" style="margin-top:10px">Entrar</button>
+    <button id="entrar" class="boton primario" style="margin-top:10px">Entrar</button>
     <p id="error-acceso" class="aviso-texto"></p>
   </div>
 
   <main id="contenido" class="oculto">
-    <section class="tarjeta hero" id="tarjeta-energia">
-      <h2>Energía <span class="cuenta" id="energia-origen"></span></h2>
-      <div class="flujo">
-        <svg class="diagrama" id="diagrama" viewBox="0 0 360 236" role="img" aria-label="Flujo de energía entre sol, casa, batería y red">
-          <path id="linea-sol" class="linea" style="stroke: var(--oro)" d="M 96 84 C 130 84, 130 116, 146 116"/>
-          <path id="linea-bateria" class="linea" style="stroke: var(--cian)" d="M 214 116 C 230 116, 230 84, 264 84"/>
-          <path id="linea-red" class="linea" style="stroke: var(--malva)" d="M 180 150 C 180 160, 180 168, 180 172"/>
 
-          <g transform="translate(70 84)">
-            <circle class="nodo" r="28"/>
-            <g class="icono-nodo" style="stroke: var(--oro)">
-              <circle r="6"/>
-              <path d="M0 -13v4M0 9v4M-13 0h4M9 0h4M-9 -9l3 3M6 6l3 3M-9 9l3 -3M6 -6l3 -3"/>
-            </g>
-            <text class="etiqueta" y="-38" text-anchor="middle">Sol</text>
-            <text class="cifra" id="cifra-sol" y="50" text-anchor="middle">—</text>
-          </g>
+    <!-- Inicio: la casa de un vistazo -->
+    <section data-vista="inicio" class="activa">
+      <div id="aviso-casa" class="aviso-casa oculto"></div>
+      <div class="losetas" id="losetas"></div>
+    </section>
 
-          <g transform="translate(180 116)">
-            <circle class="nodo" r="34" style="stroke: var(--cian)"/>
-            <g class="icono-nodo" style="stroke: var(--tinta)">
-              <path transform="translate(0 -5)" d="M-13 1 L0 -12 L13 1 M-9 -3 V12 H9 V-3 M-3 12 V4 H3 V12"/>
+    <!-- Energia -->
+    <section data-vista="energia">
+      <section class="tarjeta hero" id="tarjeta-energia">
+        <h2>Energía <span class="cuenta" id="energia-origen"></span></h2>
+        <div class="flujo">
+          <svg class="diagrama" id="diagrama" viewBox="0 0 360 236" role="img" aria-label="Flujo de energía entre sol, casa, batería y red">
+            <path id="linea-sol" class="linea" style="stroke: var(--oro)" d="M 96 84 C 130 84, 130 116, 146 116"/>
+            <path id="linea-bateria" class="linea" style="stroke: var(--cian)" d="M 214 116 C 230 116, 230 84, 264 84"/>
+            <path id="linea-red" class="linea" style="stroke: var(--malva)" d="M 180 150 C 180 160, 180 168, 180 172"/>
+            <g transform="translate(70 84)">
+              <circle class="nodo" r="28"/>
+              <g class="icono-nodo" style="stroke: var(--oro)">
+                <circle r="6"/>
+                <path d="M0 -13v4M0 9v4M-13 0h4M9 0h4M-9 -9l3 3M6 6l3 3M-9 9l3 -3M6 -6l3 -3"/>
+              </g>
+              <text class="etiqueta" y="-38" text-anchor="middle">Sol</text>
+              <text class="cifra" id="cifra-sol" y="50" text-anchor="middle">—</text>
             </g>
-            <text class="etiqueta" y="-46" text-anchor="middle">Casa</text>
-            <text class="cifra" id="cifra-casa" y="27" text-anchor="middle" style="font-size: 11px">—</text>
-          </g>
-
-          <g transform="translate(290 84)">
-            <circle class="nodo" r="28"/>
-            <g class="icono-nodo" style="stroke: var(--cian)">
-              <rect x="-11" y="-6" width="20" height="12" rx="2"/>
-              <path d="M11 -2v4M-7 -2v4M-2 -2v4"/>
+            <g transform="translate(180 116)">
+              <circle class="nodo" r="34" style="stroke: var(--cian)"/>
+              <g class="icono-nodo" style="stroke: var(--tinta)">
+                <path transform="translate(0 -5)" d="M-13 1 L0 -12 L13 1 M-9 -3 V12 H9 V-3 M-3 12 V4 H3 V12"/>
+              </g>
+              <text class="etiqueta" y="-46" text-anchor="middle">Casa</text>
+              <text class="cifra" id="cifra-casa" y="27" text-anchor="middle" style="font-size: 11px">—</text>
             </g>
-            <text class="etiqueta" y="-38" text-anchor="middle">Batería</text>
-            <text class="cifra" id="cifra-bateria" y="50" text-anchor="middle">—</text>
-          </g>
-
-          <g transform="translate(180 198)">
-            <circle class="nodo" r="26"/>
-            <g class="icono-nodo" style="stroke: var(--malva)">
-              <path d="M0 -12 L-8 12 M0 -12 L8 12 M-5 3 H5 M-9 12 H9"/>
+            <g transform="translate(290 84)">
+              <circle class="nodo" r="28"/>
+              <g class="icono-nodo" style="stroke: var(--cian)">
+                <rect x="-11" y="-6" width="20" height="12" rx="2"/>
+                <path d="M11 -2v4M-7 -2v4M-2 -2v4"/>
+              </g>
+              <text class="etiqueta" y="-38" text-anchor="middle">Batería</text>
+              <text class="cifra" id="cifra-bateria" y="50" text-anchor="middle">—</text>
             </g>
-            <text class="etiqueta" x="36" y="4" text-anchor="start">Red</text>
-            <text class="cifra" id="cifra-red" x="-36" y="5" text-anchor="end">—</text>
-          </g>
-        </svg>
-        <div class="indicadores" id="indicadores"></div>
+            <g transform="translate(180 198)">
+              <circle class="nodo" r="26"/>
+              <g class="icono-nodo" style="stroke: var(--malva)">
+                <path d="M0 -12 L-8 12 M0 -12 L8 12 M-5 3 H5 M-9 12 H9"/>
+              </g>
+              <text class="etiqueta" x="36" y="4" text-anchor="start">Red</text>
+              <text class="cifra" id="cifra-red" x="-36" y="5" text-anchor="end">—</text>
+            </g>
+          </svg>
+          <div class="indicadores" id="indicadores"></div>
+        </div>
+      </section>
+      <div class="rejilla">
+        <section class="tarjeta" id="tarjeta-bateria">
+          <h2>Batería</h2>
+          <div class="bateria">
+            <div class="pila"><div class="relleno" id="relleno-bateria"></div></div>
+            <div class="soc" id="soc-bateria">—</div>
+          </div>
+          <div class="estado-linea" id="estado-bateria"></div>
+        </section>
+        <section class="tarjeta" id="tarjeta-mezcla">
+          <h2>De dónde sale lo que consume la casa</h2>
+          <div class="apilada" id="apilada" role="img" aria-label="Mezcla de suministro"></div>
+          <div class="leyenda" id="leyenda"></div>
+          <p class="aviso-texto" id="nota-mezcla"></p>
+          <button id="ver-tabla" class="boton" style="margin-top:4px">Ver como tabla</button>
+          <div id="tabla-mezcla" class="oculto" style="margin-top:12px"></div>
+        </section>
+        <section class="tarjeta oculto" id="tarjeta-excedente">
+          <h2>Excedente solar</h2>
+          <div id="excedente"></div>
+        </section>
       </div>
     </section>
 
-    <div class="rejilla">
-      <section class="tarjeta" id="tarjeta-bateria">
-        <h2>Batería</h2>
-        <div class="bateria">
-          <div class="pila"><div class="relleno" id="relleno-bateria"></div></div>
-          <div class="soc" id="soc-bateria">—</div>
-        </div>
-        <div class="estado" id="estado-bateria"></div>
-      </section>
-
-      <section class="tarjeta" id="tarjeta-mezcla">
-        <h2>De dónde sale lo que consume la casa</h2>
-        <div class="apilada" id="apilada" role="img" aria-label="Mezcla de suministro"></div>
-        <div class="leyenda" id="leyenda"></div>
-        <p class="aviso-texto" id="nota-mezcla"></p>
-        <button id="ver-tabla" style="margin-top:4px">Ver como tabla</button>
-        <div id="tabla-mezcla" class="oculto" style="margin-top:12px"></div>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-excedente">
-        <h2>Excedente solar</h2>
-        <div id="excedente"></div>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-presencia">
-        <h2>Quién está en casa</h2>
-        <ul id="presencia"></ul>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-accesos">
-        <h2>Accesos</h2>
-        <ul id="accesos"></ul>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-luces">
-        <h2>Luces <span class="cuenta" id="luces-resumen"></span></h2>
-        <div class="chips" id="luces"></div>
-        <p class="vacio oculto" id="luces-vacio">Todas apagadas.</p>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-persianas">
-        <h2>Persianas y toldos</h2>
-        <ul id="persianas"></ul>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-clima">
-        <h2>Clima</h2>
-        <ul id="clima"></ul>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-dispositivos">
-        <h2>Aparatos</h2>
-        <ul id="dispositivos"></ul>
-      </section>
-
-      <div id="sistemas" style="display: contents"></div>
-
-      <section class="tarjeta oculto" id="tarjeta-musica">
-        <h2>Música</h2>
-        <ul id="musica"></ul>
-      </section>
-
-      <section class="tarjeta oculto" id="tarjeta-red">
-        <h2>Red</h2>
-        <ul id="red"></ul>
-      </section>
-
-      <section class="tarjeta oculto ancha" id="tarjeta-camaras">
+    <!-- Camaras -->
+    <section data-vista="camaras">
+      <div class="cabecera-vista">
         <h2>Cámaras</h2>
-        <div class="camaras" id="camaras"></div>
-      </section>
+        <button id="refrescar-camaras" class="boton">Actualizar</button>
+      </div>
+      <div class="camaras" id="camaras"></div>
+      <p class="vacio oculto" id="camaras-vacio">No hay cámaras para esta persona.</p>
+    </section>
 
-      <section class="tarjeta ancha charla" id="chat">
-        <h2>Pregúntale a Jarvis</h2>
-        <div class="entrada">
-          <textarea id="mensaje" rows="1" placeholder="¿Puedo poner la lavadora ahora?"></textarea>
-          <button id="enviar" class="primario">Preguntar</button>
-        </div>
-        <div id="respuesta" class="respuesta"></div>
-      </section>
-    </div>
+    <!-- Jarvis -->
+    <section data-vista="jarvis">
+      <div class="bienvenida" id="bienvenida">
+        <svg class="reactor" viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="2" opacity=".35"/>
+          <circle cx="20" cy="20" r="12" fill="none" stroke="currentColor" stroke-width="2.5"/>
+          <circle class="nucleo" cx="20" cy="20" r="5" fill="currentColor"/>
+        </svg>
+        <h2>¿En qué puedo ayudarle?</h2>
+        <p>Pregunte por la casa o pídame algo. Lo delicado se lo confirmo antes de hacerlo.</p>
+      </div>
+      <div class="sugerencias" id="sugerencias">
+        <button type="button">¿Cuánto sol sobra ahora?</button>
+        <button type="button">¿Está todo cerrado?</button>
+        <button type="button">¿Puedo poner la lavadora?</button>
+        <button type="button">¿Quién hay en casa?</button>
+      </div>
+      <div class="hilo" id="hilo"></div>
+      <div class="entrada">
+        <textarea id="mensaje" rows="1" placeholder="Escriba a Jarvis…"></textarea>
+        <button id="enviar" class="boton primario">Enviar</button>
+      </div>
+    </section>
   </main>
 </div>
+
+<nav class="pestanas" id="pestanas" aria-label="Secciones">
+  <button type="button" data-ir="inicio" class="activa"><span class="pastilla-icono" data-icono="casa"></span>Inicio</button>
+  <button type="button" data-ir="energia"><span class="pastilla-icono" data-icono="sol"></span>Energía</button>
+  <button type="button" data-ir="camaras"><span class="pastilla-icono" data-icono="camara"></span>Cámaras</button>
+  <button type="button" data-ir="jarvis"><span class="pastilla-icono" data-icono="jarvis"></span>Jarvis</button>
+</nav>
+
+<dialog class="hoja" id="hoja">
+  <div class="hoja-cabecera">
+    <span class="ic" id="hoja-icono"></span>
+    <h2 id="hoja-titulo"></h2>
+    <button type="button" class="boton icono-boton" id="hoja-cerrar" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="hoja-cuerpo" id="hoja-cuerpo"></div>
+</dialog>
 
 <div id="pista-flotante"></div>
 <script src="panel.js"></script>
