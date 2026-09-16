@@ -50,7 +50,7 @@ red para todo, o falta de gateway. Cuando todo esté cerrado lo dirá con un
   Jarvis, un usuario **local** de solo lectura (Network) y visualización
   (Protect), nunca la cuenta de administrador.
 - **Home Assistant**: una cuenta por persona, cada una con segundo factor
-  (Ajustes → Perfil → Autenticación en dos pasos). La de Eros sin permisos
+  (Ajustes → Perfil → Autenticación en dos pasos). La de Leo sin permisos
   de administrador. Nadie más tiene cuenta.
 - **Telegram**: el bot solo atiende a los `chat_id` de la lista, y cualquier
   desconocido que le escriba te llega como aviso. Activa el código de
@@ -67,7 +67,7 @@ red para todo, o falta de gateway. Cuando todo esté cerrado lo dirá con un
 - El API del backend no existe para la red de casa: el complemento lo
   limita a Home Assistant, y el panel se abre desde dentro de Home Assistant
   tras su login.
-- Eros solo ve luces, música y persianas, nunca cámaras ni puertas; el
+- Leo solo ve luces, música y persianas, nunca cámaras ni puertas; el
   garaje y el portón son riesgo alto para todos.
 - Cada acción ejecutada queda en la auditoría con quién la pidió y por dónde.
 - `/verificar` y `/estado` te dicen qué está expuesto: si el sistema ve una
