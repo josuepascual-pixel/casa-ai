@@ -439,6 +439,8 @@ async def test_el_plano_reparte_las_entidades_por_estancia(settings, store) -> N
         entidad("binary_sensor.ventana_salon", "on", device_class="window",
                 friendly_name="Ventana salón"),
         entidad("binary_sensor.ventanal_suite", "off", device_class="window"),
+        entidad("cover.ventana_izquierda_salon", "open", friendly_name="Ventana izquierda salón",
+                current_position=100),
     ]
     ctx = contexto(settings, inv, store, ha=adaptador(True))
     musica = [{"reproductor": "Salon", "zona": "salon", "estado": "play",
@@ -449,11 +451,14 @@ async def test_el_plano_reparte_las_entidades_por_estancia(settings, store) -> N
     assert salon["luces"] == 2 and salon["luces_encendidas"] == 1
     assert salon["temperatura"] == 24.5 and salon["clima"] == "frio"
     assert salon["musica"] == "So What — Miles Davis"
-    assert salon["ventanas"] == 1 and salon["ventanas_abiertas"] == ["Ventana salón"]
+    # Una ventana motorizada (cover) abierta cuenta como ventana, no como persiana.
+    assert salon["ventanas"] == 2
+    assert salon["ventanas_abiertas"] == ["Ventana salón", "Ventana izquierda salón"]
+    assert salon["persianas"] == 0
     assert por_zona["suite"]["ventanas_abiertas"] == []
     assert {(e["nombre"], e["dominio"]) for e in salon["entidades"]} == {
         ("Techo salón", "light"), ("light.salon_lampara", "light"), ("climate.salon", "climate"),
-        ("Ventana salón", "binary_sensor"),
+        ("Ventana salón", "binary_sensor"), ("Ventana izquierda salón", "cover"),
     }
     assert por_zona["suite"]["persianas_abiertas"] == 1
     assert por_zona["bano suite"]["luces_encendidas"] == 1  # no se la lleva «suite»

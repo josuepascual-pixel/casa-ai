@@ -165,7 +165,7 @@ async def _casa(ctx: Contexto) -> dict[str, Any]:
                 "estado": _texto_estado(c),
                 "posicion": (c.get("attributes") or {}).get("current_position"),
             }
-            for c in covers if not es_acceso(c)
+            for c in covers if not es_acceso(c) and not _es_ventana_motorizada(c)
         ],
         "accesos": [
             {
@@ -184,6 +184,14 @@ async def _casa(ctx: Contexto) -> dict[str, Any]:
                 "ventana": True,
             }
             for b in ventanas
+        ] + [
+            {
+                "nombre": _nombre(c),
+                "estado": "abierta" if _cover_abierto(c) else "cerrada",
+                "abierto": _cover_abierto(c),
+                "ventana": True,
+            }
+            for c in covers if _es_ventana_motorizada(c)
         ],
         "clima": [
             {
@@ -232,6 +240,19 @@ def _llano(texto: str) -> str:
     return " ".join(sin_acentos.replace("_", " ").replace(".", " ").split())
 
 
+def _es_ventana_motorizada(c: dict[str, Any]) -> bool:
+    """Un `cover` que es una ventana (ONNA abre ventanas al 100 %), no una persiana."""
+    atributos = c.get("attributes") or {}
+    return atributos.get("device_class") == "window" or "ventana" in _llano(_nombre(c))
+
+
+def _cover_abierto(c: dict[str, Any]) -> bool:
+    posicion = (c.get("attributes") or {}).get("current_position")
+    if posicion is not None:
+        return posicion > 0
+    return c.get("state") in ("open", "opening")
+
+
 def _habitaciones(
     ctx: Contexto, estados: list[dict[str, Any]], musica: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -270,7 +291,8 @@ def _habitaciones(
 
         luces = dominio("light")
         covers = dominio("cover")
-        persianas = [c for c in covers if not es_acceso(c)]
+        ventanas_motor = [c for c in covers if _es_ventana_motorizada(c)]
+        persianas = [c for c in covers if not es_acceso(c) and c not in ventanas_motor]
         accesos = [c for c in covers if es_acceso(c)] + dominio("lock")
         climas = dominio("climate")
         clima = climas[0] if climas else None
@@ -278,6 +300,9 @@ def _habitaciones(
             b for b in dominio("binary_sensor")
             if (b.get("attributes") or {}).get("device_class") in ("window", "door", "opening",
                                                                     "garage_door")
+        ]
+        ventanas_abiertas = [_nombre(b) for b in ventanas if b.get("state") == "on"] + [
+            _nombre(c) for c in ventanas_motor if _cover_abierto(c)
         ]
         temp = None
         for c in climas + dominio("sensor"):
@@ -299,17 +324,12 @@ def _habitaciones(
             "luces": len(luces),
             "luces_encendidas": sum(1 for x in luces if x.get("state") == "on"),
             "persianas": len(persianas),
-            "persianas_abiertas": sum(
-                1 for x in persianas
-                if ((x.get("attributes") or {}).get("current_position") or 0) > 0
-                or (x.get("state") in ("open", "opening")
-                    and (x.get("attributes") or {}).get("current_position") is None)
-            ),
+            "persianas_abiertas": sum(1 for x in persianas if _cover_abierto(x)),
             "accesos_abiertos": sum(
                 1 for x in accesos if str(x.get("state")) in ("open", "opening", "unlocked")
             ),
-            "ventanas": len(ventanas),
-            "ventanas_abiertas": [_nombre(b) for b in ventanas if b.get("state") == "on"],
+            "ventanas": len(ventanas) + len(ventanas_motor),
+            "ventanas_abiertas": ventanas_abiertas,
             "temperatura": temp,
             "clima": _texto_estado(clima) if clima else None,
             "musica": (

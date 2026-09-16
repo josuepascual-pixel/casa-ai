@@ -36,8 +36,7 @@ zonas:
   - gym
   - lavadero
   - pasillo
-  - dormitorio servicio
-  - bano servicio
+  - habitacion servicio
   - sala de maquinas
   - barbacoa
   - exterior
@@ -66,26 +65,26 @@ bluos: []
 # (p. ej. el cuarto de Leo puede llamarse "eros" en el KNX); `entidades`
 # fuerza entidades concretas a una estancia.
 plano:
-  # Sotano (segun ONNA: despacho, servicio, lavadero, sala de juegos, maquinas).
-  - {zona: despacho,             planta: Sotano, x: 0,  y: 0, ancho: 4, alto: 3, alias: [ventanal]}
-  - {zona: sala de juegos,       planta: Sotano, x: 4,  y: 0, ancho: 4, alto: 3, alias: [juegos]}
-  - {zona: lavadero,             planta: Sotano, x: 8,  y: 0, ancho: 3, alto: 3}
-  - {zona: pasillo,              planta: Sotano, x: 0,  y: 3, ancho: 11, alto: 1}
-  - {zona: dormitorio servicio,  planta: Sotano, x: 0,  y: 4, ancho: 4, alto: 2, alias: [servicio]}
-  - {zona: bano servicio,        planta: Sotano, x: 4,  y: 4, ancho: 3, alto: 2}
-  - {zona: sala de maquinas,     planta: Sotano, x: 7,  y: 4, ancho: 4, alto: 2, alias: [maquinas, enfriadora, deposito, climatizacion]}
+  # Sotano, segun ONNA: sala de juegos, despacho, sala cine, habitacion de
+  # servicio (con su bano), lavadero, y la sala de maquinas.
+  - {zona: sala de juegos,       planta: Sotano, x: 0,  y: 0, ancho: 5, alto: 3, alias: [juegos, futbolin]}
+  - {zona: despacho,             planta: Sotano, x: 5,  y: 0, ancho: 4, alto: 3, alias: [reuniones]}
+  - {zona: cine,                 planta: Sotano, x: 9,  y: 0, ancho: 4, alto: 3, alias: [sala cine, estrellado]}
+  - {zona: pasillo,              planta: Sotano, x: 0,  y: 3, ancho: 13, alto: 1}
+  - {zona: habitacion servicio,  planta: Sotano, x: 0,  y: 4, ancho: 5, alto: 2, alias: [servicio, aseo]}
+  - {zona: lavadero,             planta: Sotano, x: 5,  y: 4, ancho: 4, alto: 2}
+  - {zona: sala de maquinas,     planta: Sotano, x: 9,  y: 4, ancho: 4, alto: 2, alias: [maquinas, enfriadora, deposito, climatizacion]}
   # Planta baja: la zona de dia.
   - {zona: cocina,               planta: Planta baja, x: 0,  y: 0, ancho: 3, alto: 3}
   - {zona: comedor,              planta: Planta baja, x: 3,  y: 0, ancho: 3, alto: 3}
   - {zona: salon,                planta: Planta baja, x: 6,  y: 0, ancho: 5, alto: 3}
-  - {zona: cine,                 planta: Planta baja, x: 0,  y: 3, ancho: 4, alto: 2}
-  - {zona: gym,                  planta: Planta baja, x: 4,  y: 3, ancho: 3, alto: 2, alias: [gimnasio]}
+  - {zona: gym,                  planta: Planta baja, x: 0,  y: 3, ancho: 4, alto: 2, alias: [gimnasio]}
   # Primera: la zona de noche.
   - {zona: suite,                planta: Primera, x: 0,  y: 0, ancho: 4, alto: 3}
   - {zona: bano suite,           planta: Primera, x: 4,  y: 0, ancho: 3, alto: 3}
   - {zona: vestidor,             planta: Primera, x: 7,  y: 0, ancho: 2, alto: 3}
   - {zona: dormitorio leo,       planta: Primera, x: 0,  y: 3, ancho: 4, alto: 2, alias: [eros, leo]}
-  # Exterior (segun ONNA: piscina, jacuzzi, barbacoa, iluminacion, estacion meteorologica).
+  # Exterior, segun ONNA: piscina, jacuzzi, barbacoa, iluminacion, estacion meteorologica.
   - {zona: barbacoa,             planta: Exterior, x: 0,  y: 0, ancho: 4, alto: 3, exterior: true}
   - {zona: piscina,              planta: Exterior, x: 4,  y: 0, ancho: 5, alto: 3, exterior: true}
   - {zona: jacuzzi,              planta: Exterior, x: 9,  y: 0, ancho: 2, alto: 3, exterior: true, alias: [spa]}
