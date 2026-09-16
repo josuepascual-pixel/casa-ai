@@ -36,6 +36,7 @@ zonas:
   - dormitorio leo
   - bano leo
   - vestidor leo
+  - jacuzzi alta
   - dormitorio 2
   - dormitorio 3
   - bano invitados
@@ -107,6 +108,10 @@ plano:
   - {zona: bano leo,             planta: Planta alta, x: 5,  y: 4, ancho: 2, alto: 2, alias: [bano leo]}
   - {zona: dormitorio 2,         planta: Planta alta, x: 7,  y: 4, ancho: 3, alto: 2}
   - {zona: bano invitados,       planta: Planta alta, x: 10, y: 4, ancho: 2, alto: 2, alias: [invitados]}
+  # ONNA tiene un jacuzzi tambien arriba (terraza de la suite). Sus entidades
+  # se llamaran "jacuzzi" igual que las del exterior: declararlas aqui en
+  # `entidades:` cuando se sepan sus entity_id, para que no caigan abajo.
+  - {zona: jacuzzi alta,         planta: Planta alta, x: 0,  y: 6, ancho: 3, alto: 1, exterior: true, alias: [jacuzzi suite, jacuzzi terraza]}
   # Exterior, segun ONNA: piscina, jacuzzi, barbacoa, iluminacion, estacion meteorologica.
   - {zona: barbacoa,             planta: Exterior, x: 0,  y: 0, ancho: 4, alto: 3, exterior: true}
   - {zona: piscina,              planta: Exterior, x: 4,  y: 0, ancho: 5, alto: 3, exterior: true}

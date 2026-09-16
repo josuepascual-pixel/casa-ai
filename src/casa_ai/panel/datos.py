@@ -122,6 +122,9 @@ _ESTADOS = {
     "unavailable": "sin conexion", "unknown": "sin dato", "heat": "calor",
     "cool": "frio", "heat_cool": "auto", "auto": "auto", "dry": "seco", "fan_only": "ventilar",
     "idle": "en reposo", "playing": "sonando", "paused": "en pausa",
+    "disarmed": "desarmada", "armed_home": "armada en casa", "armed_away": "armada",
+    "armed_night": "armada de noche", "armed_vacation": "armada", "arming": "armando",
+    "pending": "pendiente", "triggered": "saltando",
 }
 
 
@@ -201,6 +204,16 @@ async def _casa(ctx: Contexto) -> dict[str, Any]:
                 "modo": _ESTADOS.get(str(c.get("state")), str(c.get("state"))),
             }
             for c in por_dominio.get("climate", [])
+        ],
+        # La alarma (ONNA la llama Seguridad): armada, desarmada o saltando.
+        "alarma": [
+            {
+                "nombre": _nombre(a),
+                "estado": _texto_estado(a),
+                "armada": str(a.get("state", "")).startswith("armed"),
+                "saltando": a.get("state") == "triggered",
+            }
+            for a in por_dominio.get("alarm_control_panel", [])
         ],
         "sistemas": [
             {

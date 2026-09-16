@@ -88,6 +88,7 @@ const ICONOS = {
   aparatos: ["M9 2v5M15 2v5", "M6 7h12v4a6 6 0 0 1-12 0z", "M12 17v5"],
   jarvis: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
   ventana: ["M4 4h16v16H4z", "M12 4v16M4 12h16"],
+  escudo: ["M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3z", "M9 12l2 2 4-4"],
   alerta: ["M12 3 2 20h20L12 3z", "M12 10v4M12 17h.01"],
   bien: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M8.5 12.5l2.5 2.5 4.5-5"],
 };
@@ -431,6 +432,15 @@ function losetasDe(datos) {
       })) });
   }
 
+  if (casa?.alarma?.length) {
+    const a = casa.alarma[0];
+    salida.push({ id: "alarma", icono: "escudo", titulo: "Seguridad",
+      tono: a.saltando ? "critico" : a.armada ? "bien" : "neutro",
+      estado: casa.alarma.length === 1 ? a.estado : casa.alarma.map((x) => `${x.nombre}: ${x.estado}`).join(" · "),
+      detalle: () => lista(casa.alarma, (x) => fila(null, x.nombre, x.estado,
+        { pastilla: x.saltando ? "critico" : x.armada ? "bien" : "neutra" })) });
+  }
+
   if (casa?.accesos?.length) {
     const abiertos = casa.accesos.filter((a) => a.abierto);
     salida.push({ id: "accesos", icono: "candado", titulo: "Accesos", tono: abiertos.length ? "aviso" : "bien",
@@ -572,7 +582,11 @@ function pintarLosetas(datos) {
   const aviso = $("aviso-casa");
   aviso.textContent = "";
   const abiertos = (hayDatos(datos.casa) ? datos.casa.accesos || [] : []).filter((a) => a.abierto);
-  if (abiertos.length) {
+  const saltando = (hayDatos(datos.casa) ? datos.casa.alarma || [] : []).filter((a) => a.saltando);
+  if (saltando.length) {
+    aviso.className = "aviso-casa critico";
+    aviso.append(icono("alerta"), el("span", null, `Alarma: ${saltando.map((a) => a.nombre).join(", ")}`));
+  } else if (abiertos.length) {
     aviso.className = "aviso-casa";
     const texto = abiertos.length === 1
       ? `${abiertos[0].nombre}: ${abiertos[0].ventana ? "abierta" : "abierto"}`

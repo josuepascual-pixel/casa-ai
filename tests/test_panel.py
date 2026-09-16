@@ -346,6 +346,7 @@ def _estados_de_una_casa() -> list[dict]:
         entidad("sensor.wallbox_potencia", "7.2", friendly_name="Potencia",
                 unit_of_measurement="kW"),
         entidad("sensor.ecowater_sal", "34", unit_of_measurement="%"),
+        entidad("alarm_control_panel.casa", "armed_home", friendly_name="Seguridad"),
     ]
 
 
@@ -380,6 +381,9 @@ async def test_el_panel_ensena_la_casa_que_hay_en_home_assistant(settings, store
                               "modo": "calor"}]
     assert casa["presencia"] == [{"nombre": "Josué", "en_casa": True},
                                  {"nombre": "Ana", "en_casa": False}]
+    assert casa["alarma"] == [
+        {"nombre": "Seguridad", "estado": "armada en casa", "armada": True, "saltando": False}
+    ]
     assert casa["sistemas"] == [
         {"titulo": "Coche", "lineas": [{"nombre": "Cargando", "valor": "7.2 kW"},
                                        {"nombre": "Batería", "valor": "sin dato"}]},
