@@ -399,7 +399,7 @@ const SIN_DATO = ["sin dato", "sin conexion", "sin conexión"];
 function iconoDeSistema(titulo) {
   const t = titulo.toLowerCase();
   const tabla = [
-    ["coche", "coche"], ["wallbox", "coche"], ["agua", "agua"], ["ecowater", "agua"],
+    ["tiempo", "sol"], ["meteo", "sol"], ["coche", "coche"], ["wallbox", "coche"], ["agua", "agua"], ["ecowater", "agua"],
     ["spa", "spa"], ["jacuzzi", "spa"], ["piscina", "spa"], ["riego", "riego"],
     ["cine", "cine"], ["tv", "cine"], ["lavad", "lavadora"], ["cocina", "lavadora"],
     ["videoport", "timbre"], ["portero", "timbre"], ["puerta", "candado"], ["clima", "clima"],
@@ -695,23 +695,61 @@ function pintarPlano(datos) {
   }
 }
 
+// El detalle de una estancia, por secciones como en la app de ONNA:
+// iluminacion, persianas, temperatura, suministros y el resto. Es de lectura;
+// para tocar algo, el boton lleva al chat con la estancia ya escrita.
+const SECCIONES = [
+  ["Iluminación", ["light"]],
+  ["Persianas y estores", ["cover"]],
+  ["Temperatura", ["climate"]],
+  ["Suministros", ["switch", "fan", "input_boolean"]],
+  ["Música", ["media_player"]],
+  ["Otros", null],
+];
+
+const ENCENDIDO = new Set(["encendida", "encendido", "abierta", "on", "calor", "frio", "auto", "sonando"]);
+
 function detalleEstancia(e, h) {
   const cont = el("div");
-  const resumen = el("ul");
-  const anade = (texto, valor, pastilla) => resumen.appendChild(fila(null, texto, valor, { pastilla }));
-  if (h.luces) anade("Luces", h.luces_encendidas ? `${h.luces_encendidas} de ${h.luces} encendidas` : "todas apagadas", h.luces_encendidas ? "aviso" : "neutra");
-  if (h.temperatura !== null && h.temperatura !== undefined) anade("Temperatura", grados(h.temperatura), "cian");
-  if (h.clima) anade("Clima", h.clima, ["off", "apagada", "en reposo"].includes(h.clima) ? "neutra" : "cian");
-  if (h.persianas) anade("Persianas", h.persianas_abiertas ? `${h.persianas_abiertas} de ${h.persianas} abiertas` : "todas cerradas", h.persianas_abiertas ? "cian" : "neutra");
-  if (h.accesos_abiertos) anade("Acceso", "abierto", "aviso");
-  if (h.musica) anade("Sonando", h.musica, "bien");
-  if (h.camara) anade("Cámara", "ver en Cámaras", "neutra");
-  if (!resumen.children.length) resumen.appendChild(el("li", "vacio", "Nada declarado en esta estancia todavía."));
-  cont.appendChild(resumen);
-  if (h.entidades && h.entidades.length) {
-    cont.appendChild(el("p", "seccion-titulo", "Todo lo que hay"));
-    cont.appendChild(lista(h.entidades, (x) => fila(null, x.nombre, x.estado)));
+  const linea = el("ul");
+  if (h.temperatura !== null && h.temperatura !== undefined) {
+    linea.appendChild(fila(null, "Temperatura", grados(h.temperatura), { pastilla: "cian" }));
   }
+  if (h.musica) linea.appendChild(fila(null, "Sonando", h.musica, { pastilla: "bien" }));
+  if (h.accesos_abiertos) linea.appendChild(fila(null, "Acceso", "abierto", { pastilla: "aviso" }));
+  if (linea.children.length) cont.appendChild(linea);
+
+  const ents = h.entidades || [];
+  const usadas = new Set();
+  for (const [titulo, dominios] of SECCIONES) {
+    const grupo = ents.filter((x, i) => !usadas.has(i) && (dominios === null || dominios.includes(x.dominio)));
+    if (!grupo.length) continue;
+    grupo.forEach((x) => usadas.add(ents.indexOf(x)));
+    const activos = grupo.filter((x) => ENCENDIDO.has(String(x.estado).toLowerCase())).length;
+    const cab = el("p", "seccion-titulo", titulo);
+    if (dominios && dominios.includes("light")) cab.append(el("span", "cuenta", `  ${activos} de ${grupo.length} encendidas`));
+    cont.appendChild(cab);
+    cont.appendChild(lista(grupo, (x) => {
+      const encendido = ENCENDIDO.has(String(x.estado).toLowerCase());
+      const apagado = ["apagada", "apagado", "cerrada", "off", "en reposo"].includes(String(x.estado).toLowerCase());
+      return fila(null, x.nombre, x.estado, { pastilla: encendido ? "bien" : apagado ? "neutra" : undefined });
+    }));
+  }
+  if (!ents.length && !linea.children.length) {
+    cont.appendChild(el("p", "vacio", "Nada declarado en esta estancia todavía."));
+  }
+
+  const pedir = el("button", "boton primario", `Pedir a Jarvis algo en ${capitalizar(e.zona).toLowerCase()}`);
+  pedir.type = "button";
+  pedir.style.marginTop = "16px";
+  pedir.style.width = "100%";
+  pedir.addEventListener("click", () => {
+    $("hoja").close();
+    irA("jarvis");
+    $("mensaje").value = `En ${capitalizar(e.zona).toLowerCase()}, `;
+    $("mensaje").focus();
+  });
+  cont.appendChild(pedir);
   return cont;
 }
 

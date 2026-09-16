@@ -39,6 +39,7 @@ zonas:
   - barbacoa
   - exterior
   - piscina
+  - jacuzzi
 
 # Las tres G6 Instant. El id_protect lo da `python -m casa_ai.verificar`.
 camaras:
@@ -78,14 +79,34 @@ plano:
   - {zona: gym,              x: 12, y: 3, ancho: 4, alto: 1, alias: [gimnasio]}
   # Fuera.
   - {zona: barbacoa,         x: 0,  y: 6, ancho: 4, alto: 2, exterior: true}
-  - {zona: piscina,          x: 4,  y: 6, ancho: 7, alto: 2, exterior: true}
-  - {zona: exterior,         x: 11, y: 6, ancho: 5, alto: 2, exterior: true, alias: [jardin, terraza]}
+  - {zona: piscina,          x: 4,  y: 6, ancho: 5, alto: 2, exterior: true}
+  - {zona: jacuzzi,          x: 9,  y: 6, ancho: 2, alto: 2, exterior: true, alias: [spa]}
+  - {zona: exterior,         x: 11, y: 6, ancho: 5, alto: 2, exterior: true, alias: [jardin, terraza, navidenas, meteo]}
 
 # Tarjetas del panel, una por sistema. Luces, persianas y toldos, accesos
 # (garaje, porton, cerradura Nuki), clima y quien esta en casa salen solos.
 # Cada tarjeta se descomenta cuando su integracion este instalada en Home
 # Assistant y se sustituyen los entity_id por los reales.
 panel: []
+  # Lo que ONNA ensena en el exterior (los entity_id salen de la integracion
+  # knx de Home Assistant; buscarlos con «Jarvis, busca la entidad ...»):
+  # - titulo: Tiempo (estacion meteorologica)
+  #   entidades:
+  #     Tiempo: sensor.knx_meteo_tiempo
+  #     Temperatura: sensor.knx_meteo_temperatura
+  #     Humedad: sensor.knx_meteo_humedad
+  #     Viento: sensor.knx_meteo_viento
+  #     Direccion: sensor.knx_meteo_direccion
+  #     Presion: sensor.knx_meteo_presion
+  #     Luminosidad: sensor.knx_meteo_luminosidad
+  # - titulo: Jacuzzi
+  #   entidades:
+  #     Agua: climate.knx_jacuzzi
+  #     Calentador: switch.knx_jacuzzi_calentador
+  #     Filtracion: switch.knx_jacuzzi_filtracion
+  #     Cubrimiento: cover.knx_jacuzzi_cubrimiento
+  #     pH: sensor.knx_jacuzzi_ph
+  #     ORP: sensor.knx_jacuzzi_orp
   # - titulo: Coche (Wallbox)
   #   entidades:
   #     Cargando: sensor.wallbox_charging_power

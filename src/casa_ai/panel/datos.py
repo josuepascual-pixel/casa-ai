@@ -298,7 +298,12 @@ def _habitaciones(
             ) if que_suena and que_suena.get("estado") in ("play", "stream") else None,
             "camara": e.zona in camaras,
             "entidades": [
-                {"nombre": _nombre(x), "estado": _texto_estado(x)} for x in ents
+                {
+                    "nombre": _nombre(x),
+                    "estado": _texto_estado(x),
+                    "dominio": str(x.get("entity_id", "")).split(".", 1)[0],
+                }
+                for x in ents
             ],
         })
     return salida

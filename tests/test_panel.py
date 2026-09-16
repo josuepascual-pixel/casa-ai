@@ -443,8 +443,9 @@ async def test_el_plano_reparte_las_entidades_por_estancia(settings, store) -> N
     assert salon["luces"] == 2 and salon["luces_encendidas"] == 1
     assert salon["temperatura"] == 24.5 and salon["clima"] == "frio"
     assert salon["musica"] == "So What — Miles Davis"
-    assert {e["nombre"] for e in salon["entidades"]} == {"Techo salón", "light.salon_lampara",
-                                                          "climate.salon"}
+    assert {(e["nombre"], e["dominio"]) for e in salon["entidades"]} == {
+        ("Techo salón", "light"), ("light.salon_lampara", "light"), ("climate.salon", "climate"),
+    }
     assert por_zona["suite"]["persianas_abiertas"] == 1
     assert por_zona["bano suite"]["luces_encendidas"] == 1  # no se la lleva «suite»
     assert por_zona["dormitorio leo"]["luces_encendidas"] == 1  # por el alias
