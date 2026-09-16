@@ -97,7 +97,7 @@ plano:
   # y su bano, dormitorios 2 y 3, bano de invitados. En tu copia local anade
   # el nombre real del nino como alias de su cuarto y de su bano (ONNA los
   # nombra asi), p. ej. `alias: [<nombre>]` / `alias: [bano <nombre>]`.
-  - {zona: suite,                planta: Planta alta, x: 0,  y: 0, ancho: 4, alto: 3, alias: [principal]}
+  - {zona: suite,                planta: Planta alta, x: 0,  y: 0, ancho: 4, alto: 3, alias: [principal, tocador, balcon, cortina]}
   - {zona: bano suite,           planta: Planta alta, x: 4,  y: 0, ancho: 3, alto: 3}
   - {zona: vestidor,             planta: Planta alta, x: 7,  y: 0, ancho: 2, alto: 3}
   - {zona: dormitorio 3,         planta: Planta alta, x: 9,  y: 0, ancho: 3, alto: 3}
