@@ -87,6 +87,7 @@ const ICONOS = {
   wifi: ["M2 9a14 14 0 0 1 20 0", "M5.5 12.5a10 10 0 0 1 13 0", "M9 16a5 5 0 0 1 6 0", "M12 19.5h.01"],
   aparatos: ["M9 2v5M15 2v5", "M6 7h12v4a6 6 0 0 1-12 0z", "M12 17v5"],
   jarvis: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"],
+  ventana: ["M4 4h16v16H4z", "M12 4v16M4 12h16"],
   alerta: ["M12 3 2 20h20L12 3z", "M12 10v4M12 17h.01"],
   bien: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M8.5 12.5l2.5 2.5 4.5-5"],
 };
@@ -433,7 +434,7 @@ function losetasDe(datos) {
   if (casa?.accesos?.length) {
     const abiertos = casa.accesos.filter((a) => a.abierto);
     salida.push({ id: "accesos", icono: "candado", titulo: "Accesos", tono: abiertos.length ? "aviso" : "bien",
-      estado: abiertos.length ? `${abiertos.map((a) => a.nombre).join(", ")}: abierto` : "Todo cerrado",
+      estado: abiertos.length ? `${abiertos.map((a) => a.nombre).join(", ")}: ${abiertos.length === 1 && abiertos[0].ventana ? "abierta" : "abierto"}` : "Todo cerrado",
       detalle: () => lista(casa.accesos, (a) => fila(null, a.nombre, a.estado, { pastilla: a.abierto ? "aviso" : "bien" })) });
   }
 
@@ -573,7 +574,9 @@ function pintarLosetas(datos) {
   const abiertos = (hayDatos(datos.casa) ? datos.casa.accesos || [] : []).filter((a) => a.abierto);
   if (abiertos.length) {
     aviso.className = "aviso-casa";
-    aviso.append(icono("alerta"), el("span", null, `${abiertos.map((a) => a.nombre).join(" y ")}: abierto`));
+    const todasVentanas = abiertos.every((a) => a.ventana);
+    aviso.append(icono("alerta"), el("span", null,
+      `${abiertos.map((a) => a.nombre).join(" y ")}: ${todasVentanas ? (abiertos.length === 1 ? "abierta" : "abiertas") : "abierto"}`));
   } else if (hayDatos(datos.casa) && (datos.casa.accesos || []).length) {
     aviso.className = "aviso-casa tranquilo";
     aviso.append(icono("bien"), el("span", null, "Todo cerrado"));
@@ -590,6 +593,8 @@ function pintarLosetas(datos) {
 
 const NS = "http://www.w3.org/2000/svg";
 const CELDA = 40;
+const CLAVE_PLANTA = "casa-ai-planta";
+let plantaActual = null;
 
 function svg(tag, atributos = {}) {
   const n = document.createElementNS(NS, tag);
@@ -620,14 +625,41 @@ function pintarPlano(datos) {
   svgPlano.textContent = "";
   if (!plano.length) { svgPlano.parentElement.classList.add("oculto"); return; }
   svgPlano.parentElement.classList.remove("oculto");
+
+  // Plantas: un selector si hay mas de una; se recuerda la elegida.
+  const plantas = [...new Set(plano.map((e) => e.planta || ""))];
+  const selector = $("plantas");
+  selector.textContent = "";
+  if (plantas.length > 1) {
+    if (!plantas.includes(plantaActual)) {
+      let guardada = null;
+      try { guardada = localStorage.getItem(CLAVE_PLANTA); } catch { /* nada */ }
+      plantaActual = plantas.includes(guardada) ? guardada : plantas[0];
+    }
+    for (const p of plantas) {
+      const b = el("button", p === plantaActual ? "activa" : "", p || "Casa");
+      b.type = "button";
+      b.addEventListener("click", () => {
+        plantaActual = p;
+        try { localStorage.setItem(CLAVE_PLANTA, p); } catch { /* nada */ }
+        if (ultimosDatos) pintarPlano(ultimosDatos);
+      });
+      selector.appendChild(b);
+    }
+    selector.classList.remove("oculto");
+  } else {
+    plantaActual = plantas[0];
+    selector.classList.add("oculto");
+  }
   const habitaciones = new Map(((hayDatos(datos.casa) && datos.casa.habitaciones) || []).map((h) => [h.zona, h]));
 
   const M = 6;
-  const anchoMax = Math.max(...plano.map((e) => e.x + e.ancho));
-  const altoMax = Math.max(...plano.map((e) => e.y + e.alto));
+  const visibles = plano.filter((e) => (e.planta || "") === plantaActual);
+  const anchoMax = Math.max(...visibles.map((e) => e.x + e.ancho));
+  const altoMax = Math.max(...visibles.map((e) => e.y + e.alto));
   svgPlano.setAttribute("viewBox", `0 0 ${anchoMax * CELDA + M * 2} ${altoMax * CELDA + M * 2}`);
 
-  for (const e of plano) {
+  for (const e of visibles) {
     const h = habitaciones.get(e.zona) || {};
     const x = M + e.x * CELDA, y = M + e.y * CELDA, w = e.ancho * CELDA - 4, alto = e.alto * CELDA - 4;
     const clases = ["estancia"];
@@ -635,7 +667,7 @@ function pintarPlano(datos) {
     if (/piscina|spa|jacuzzi/i.test(e.zona)) clases.push("agua");
     if (h.luces_encendidas) clases.push("luz");
     if (h.clima && !["off", "apagada", "en reposo"].includes(h.clima)) clases.push("clima");
-    if (h.accesos_abiertos) clases.push("alerta");
+    if (h.accesos_abiertos || (h.ventanas_abiertas || []).length) clases.push("alerta");
     const g = svg("g", { class: clases.join(" "), tabindex: "0", role: "button" });
     g.appendChild(svg("rect", { class: "suelo", x, y, width: w, height: alto, rx: 7 }));
     g.appendChild(svg("title")).textContent = capitalizar(e.zona);
@@ -666,6 +698,7 @@ function pintarPlano(datos) {
     if (h.musica) simbolos.push(["musica", "musica"]);
     if (h.persianas_abiertas) simbolos.push(["persiana", "persiana"]);
     if (h.accesos_abiertos) simbolos.push(["alerta", "alerta"]);
+    if ((h.ventanas_abiertas || []).length) simbolos.push(["ventana", "alerta", h.ventanas_abiertas.length]);
     if (h.camara) simbolos.push(["camara", "camara"]);
     const ancho = (s) => 18 + (s[2] > 1 ? 8 : 0);
     let sx, sy;
@@ -702,6 +735,7 @@ const SECCIONES = [
   ["Iluminación", ["light"]],
   ["Persianas y estores", ["cover"]],
   ["Temperatura", ["climate"]],
+  ["Ventanas y puertas", ["binary_sensor"]],
   ["Suministros", ["switch", "fan", "input_boolean"]],
   ["Música", ["media_player"]],
   ["Otros", null],
@@ -717,6 +751,7 @@ function detalleEstancia(e, h) {
   }
   if (h.musica) linea.appendChild(fila(null, "Sonando", h.musica, { pastilla: "bien" }));
   if (h.accesos_abiertos) linea.appendChild(fila(null, "Acceso", "abierto", { pastilla: "aviso" }));
+  for (const v of h.ventanas_abiertas || []) linea.appendChild(fila(null, v, "abierta", { pastilla: "aviso" }));
   if (linea.children.length) cont.appendChild(linea);
 
   const ents = h.entidades || [];

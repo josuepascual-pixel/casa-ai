@@ -148,6 +148,11 @@ async def _casa(ctx: Contexto) -> dict[str, Any]:
     luces = por_dominio.get("light", [])
     covers = por_dominio.get("cover", [])
     accesos = [c for c in covers if es_acceso(c)] + por_dominio.get("lock", [])
+    ventanas = [
+        b for b in por_dominio.get("binary_sensor", [])
+        if (b.get("attributes") or {}).get("device_class") in ("window", "door", "opening",
+                                                                "garage_door")
+    ]
 
     casa: dict[str, Any] = {
         "luces": {
@@ -171,6 +176,14 @@ async def _casa(ctx: Contexto) -> dict[str, Any]:
                                                    "jammed"),
             }
             for a in accesos
+        ] + [
+            {
+                "nombre": _nombre(b),
+                "estado": "abierta" if b.get("state") == "on" else "cerrada",
+                "abierto": b.get("state") == "on",
+                "ventana": True,
+            }
+            for b in ventanas
         ],
         "clima": [
             {
@@ -261,6 +274,11 @@ def _habitaciones(
         accesos = [c for c in covers if es_acceso(c)] + dominio("lock")
         climas = dominio("climate")
         clima = climas[0] if climas else None
+        ventanas = [
+            b for b in dominio("binary_sensor")
+            if (b.get("attributes") or {}).get("device_class") in ("window", "door", "opening",
+                                                                    "garage_door")
+        ]
         temp = None
         for c in climas + dominio("sensor"):
             atributos = c.get("attributes") or {}
@@ -290,6 +308,8 @@ def _habitaciones(
             "accesos_abiertos": sum(
                 1 for x in accesos if str(x.get("state")) in ("open", "opening", "unlocked")
             ),
+            "ventanas": len(ventanas),
+            "ventanas_abiertas": [_nombre(b) for b in ventanas if b.get("state") == "on"],
             "temperatura": temp,
             "clima": _texto_estado(clima) if clima else None,
             "musica": (
@@ -314,13 +334,13 @@ def plano_de(ctx: Contexto) -> list[dict[str, Any]]:
     inv = ctx.inventario
     if inv.plano:
         return [
-            {"zona": e.zona, "x": e.x, "y": e.y, "ancho": e.ancho, "alto": e.alto,
-             "exterior": e.exterior}
+            {"zona": e.zona, "planta": e.planta, "x": e.x, "y": e.y, "ancho": e.ancho,
+             "alto": e.alto, "exterior": e.exterior}
             for e in inv.plano
         ]
     columnas = 4
     return [
-        {"zona": z, "x": (i % columnas) * 2, "y": (i // columnas) * 2, "ancho": 2, "alto": 2,
-         "exterior": False}
+        {"zona": z, "planta": "", "x": (i % columnas) * 2, "y": (i // columnas) * 2,
+         "ancho": 2, "alto": 2, "exterior": False}
         for i, z in enumerate(inv.zonas)
     ]

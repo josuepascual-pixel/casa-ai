@@ -337,6 +337,8 @@ def _estados_de_una_casa() -> list[dict]:
                 current_position=60),
         entidad("cover.garaje", "closed", friendly_name="Garaje", device_class="garage"),
         entidad("lock.puerta_principal", "unlocked", friendly_name="Puerta principal"),
+        entidad("binary_sensor.ventana_lavadero", "on", device_class="window",
+                friendly_name="Ventana lavadero"),
         entidad("climate.salon", "heat", friendly_name="Clima salón", current_temperature=21.5,
                 temperature=22),
         entidad("person.josue", "home", friendly_name="Josué"),
@@ -372,6 +374,7 @@ async def test_el_panel_ensena_la_casa_que_hay_en_home_assistant(settings, store
     assert casa["accesos"] == [
         {"nombre": "Garaje", "estado": "cerrada", "abierto": False},
         {"nombre": "Puerta principal", "estado": "abierta", "abierto": True},
+        {"nombre": "Ventana lavadero", "estado": "abierta", "abierto": True, "ventana": True},
     ]
     assert casa["clima"] == [{"nombre": "Clima salón", "actual": 21.5, "objetivo": 22,
                               "modo": "calor"}]
@@ -433,6 +436,9 @@ async def test_el_plano_reparte_las_entidades_por_estancia(settings, store) -> N
         entidad("sensor.temperatura_piscina", "27.5", device_class="temperature",
                 unit_of_measurement="°C"),
         entidad("lock.puerta_principal", "unlocked"),
+        entidad("binary_sensor.ventana_salon", "on", device_class="window",
+                friendly_name="Ventana salón"),
+        entidad("binary_sensor.ventanal_suite", "off", device_class="window"),
     ]
     ctx = contexto(settings, inv, store, ha=adaptador(True))
     musica = [{"reproductor": "Salon", "zona": "salon", "estado": "play",
@@ -443,8 +449,11 @@ async def test_el_plano_reparte_las_entidades_por_estancia(settings, store) -> N
     assert salon["luces"] == 2 and salon["luces_encendidas"] == 1
     assert salon["temperatura"] == 24.5 and salon["clima"] == "frio"
     assert salon["musica"] == "So What — Miles Davis"
+    assert salon["ventanas"] == 1 and salon["ventanas_abiertas"] == ["Ventana salón"]
+    assert por_zona["suite"]["ventanas_abiertas"] == []
     assert {(e["nombre"], e["dominio"]) for e in salon["entidades"]} == {
         ("Techo salón", "light"), ("light.salon_lampara", "light"), ("climate.salon", "climate"),
+        ("Ventana salón", "binary_sensor"),
     }
     assert por_zona["suite"]["persianas_abiertas"] == 1
     assert por_zona["bano suite"]["luces_encendidas"] == 1  # no se la lleva «suite»
@@ -455,7 +464,8 @@ async def test_el_plano_reparte_las_entidades_por_estancia(settings, store) -> N
     assert not any("puerta" in e["nombre"] for h in por_zona.values() for e in h["entidades"])
 
     plano = plano_de(ctx)
-    assert plano[0] == {"zona": "salon", "x": 0, "y": 0, "ancho": 3, "alto": 2, "exterior": False}
+    assert plano[0] == {"zona": "salon", "planta": "", "x": 0, "y": 0, "ancho": 3, "alto": 2,
+                        "exterior": False}
     # Sin plano, las zonas se colocan solas.
     ctx.inventario = Inventario.model_validate({"zonas": ["a", "b", "c", "d", "e"]})
     auto = plano_de(ctx)

@@ -105,6 +105,10 @@
   .plano-leyenda { display: flex; gap: 12px; font-size: 11px; color: var(--tinta-apagada); }
   .plano-leyenda span { display: inline-flex; align-items: center; gap: 4px; }
   .plano-leyenda i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .plantas { display: flex; gap: 4px; padding: 3px; margin: 0 0 10px; border-radius: 12px; background: var(--superficie-2); }
+  .plantas button { flex: 1; padding: 7px 4px; border: 0; border-radius: 9px; background: none; color: var(--tinta-2);
+                    font: 500 13px var(--fuente-ui); }
+  .plantas button.activa { background: var(--superficie); color: var(--tinta); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
   .plano { width: 100%; height: auto; display: block; max-width: 100%; }
   .plano .estancia { cursor: pointer; }
   .plano .suelo { fill: var(--superficie-2); stroke: var(--linea); stroke-width: 1.5; transition: fill .3s; }
@@ -378,6 +382,7 @@
             <span><i style="background: var(--bien)"></i>música</span>
           </span>
         </div>
+        <div class="plantas oculto" id="plantas"></div>
         <svg class="plano" id="plano" role="img" aria-label="Plano de la casa"></svg>
       </div>
       <div class="tira-energia" id="tira-energia"></div>

@@ -192,6 +192,9 @@ class Estancia(BaseModel):
     """
 
     zona: str
+    # Planta a la que pertenece (Sotano, Planta baja, Primera, Exterior...).
+    # Con mas de una, el panel ensena un selector.
+    planta: str = ""
     x: int = 0
     y: int = 0
     ancho: int = 2
