@@ -77,7 +77,7 @@ plano:
   - {zona: habitacion servicio,  planta: Sotano, x: 0,  y: 4, ancho: 5, alto: 2, alias: [servicio, aseo]}
   - {zona: lavadero,             planta: Sotano, x: 5,  y: 4, ancho: 4, alto: 2}
   - {zona: sala de maquinas,     planta: Sotano, x: 9,  y: 4, ancho: 4, alto: 2, alias: [maquinas, enfriadora, deposito, climatizacion]}
-  # Planta baja, segun ONNA: cocina (con despensa), comedor, salon (con las
+  # Planta baja, segun ONNA: cocina (con despensa), bodega, salon (con las
   # ventanas del porche y de la rampa) y gimnasio. Las puertas exteriores
   # (entrada, corredera...) van a la entrada.
   - {zona: cocina,               planta: Planta baja, x: 0,  y: 0, ancho: 3, alto: 3}
