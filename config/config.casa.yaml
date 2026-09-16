@@ -27,7 +27,8 @@ zonas:
   - comedor
   - cocina
   - despensa
-  - entrada
+  - recibidor
+  - aseo
   - despacho
   - suite
   - bano suite
@@ -84,7 +85,8 @@ plano:
   - {zona: comedor,              planta: Planta baja, x: 3,  y: 0, ancho: 3, alto: 3}
   - {zona: salon,                planta: Planta baja, x: 6,  y: 0, ancho: 5, alto: 4, alias: [porche, rampa]}
   - {zona: gym,                  planta: Planta baja, x: 3,  y: 3, ancho: 3, alto: 3, alias: [gimnasio]}
-  - {zona: entrada,              planta: Planta baja, x: 0,  y: 4, ancho: 3, alto: 2, alias: [puerta exterior, puerta entrada, corredera, recibidor]}
+  - {zona: recibidor,            planta: Planta baja, x: 0,  y: 4, ancho: 2, alto: 2, alias: [entrada, escalera, ascensor, puerta exterior, corredera]}
+  - {zona: aseo,                 planta: Planta baja, x: 2,  y: 4, ancho: 1, alto: 2}
   # Primera: la zona de noche.
   - {zona: suite,                planta: Primera, x: 0,  y: 0, ancho: 4, alto: 3}
   - {zona: bano suite,           planta: Primera, x: 4,  y: 0, ancho: 3, alto: 3}
