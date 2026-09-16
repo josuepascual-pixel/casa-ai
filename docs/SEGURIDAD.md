@@ -131,7 +131,11 @@ conjunto estático de estados— pero no metas cerraduras en una escena.
   Abrir la puerta de casa por chat es la única acción de la lista sin vuelta
   atrás si algo va mal.
 - **Las rutinas programadas no pueden ejecutar acciones de riesgo.** A las 8 de
-  la mañana no hay nadie para confirmar.
+  la mañana no hay nadie para confirmar. Lo mismo vale para lo que alguien
+  deja programado por chat («sube la persiana a las 8»): se ejecuta con la
+  identidad y los permisos de quien lo pidió (un niño sigue siendo un niño),
+  sin confirmación posible y por tanto sin riesgo alto, y el resultado vuelve
+  solo a su chat. Cada uno ve y cancela únicamente sus programaciones.
 - **Todo lo que se ejecuta queda auditado**, con quién lo pidió y por qué canal.
 - **La autorización falla cerrada**: lista de chats vacía, no se atiende a
   nadie.

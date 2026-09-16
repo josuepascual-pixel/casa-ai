@@ -335,6 +335,14 @@ seguridad:
 
 Se configuran en `src/casa_ai/automations/rutinas.py`.
 
+Y lo que tú le dejes programado por chat: «sube las persianas del salón a las
+8», «recuérdame el viernes a las 17:00 que llame al dentista», «pon jazz en la
+cocina los laborables a las 7:30». A su hora Jarvis lo hace con tus mismos
+permisos y te escribe por el mismo chat con lo que ha hecho. Una orden
+programada nunca ejecuta una acción de riesgo alto (batería, wifi, KNX): no
+hay nadie delante para confirmarla, así que te lo dice y la pides tú. Solo por
+Telegram y WhatsApp, que son los canales por los que puede avisarte.
+
 ## Arquitectura
 
 ```

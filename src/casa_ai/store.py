@@ -72,6 +72,24 @@ CREATE TABLE IF NOT EXISTS ajustes (
     clave TEXT PRIMARY KEY,
     valor TEXT NOT NULL
 );
+
+-- Ordenes para mas tarde pedidas por chat («sube la persiana a las 8»). Se
+-- ejecutan como un turno del agente con la identidad de quien las pidio, y
+-- el resultado vuelve por su mismo chat. `siguiente` es el proximo disparo
+-- (epoch); una repetida se reprograma, una suelta se desactiva.
+CREATE TABLE IF NOT EXISTS programaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    creado REAL NOT NULL,
+    canal TEXT NOT NULL,
+    usuario TEXT NOT NULL,
+    conversacion TEXT NOT NULL,
+    orden TEXT NOT NULL,
+    siguiente REAL NOT NULL,
+    hora TEXT,
+    dias TEXT,
+    activa INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_programaciones_siguiente ON programaciones(activa, siguiente);
 """
 
 # Una accion pendiente caduca: confirmar a ciegas algo pedido hace dos horas
@@ -395,6 +413,65 @@ class Store:
                 (conversacion,),
             )
             c.execute("DELETE FROM mensajes WHERE conversacion = ?", (conversacion,))
+
+    # --- Programaciones ---------------------------------------------------
+    def programar(
+        self,
+        *,
+        canal: str,
+        usuario: str,
+        conversacion: str,
+        orden: str,
+        siguiente: float,
+        hora: str | None = None,
+        dias: str | None = None,
+    ) -> int:
+        with self._conn() as c:
+            cur = c.execute(
+                "INSERT INTO programaciones (creado, canal, usuario, conversacion, orden,"
+                " siguiente, hora, dias) VALUES (?,?,?,?,?,?,?,?)",
+                (time.time(), canal, usuario, conversacion, orden, siguiente, hora, dias),
+            )
+            return int(cur.lastrowid or 0)
+
+    def programaciones(self, *, canal: str, usuario: str) -> list[dict[str, Any]]:
+        """Las activas de una persona, la mas proxima primero."""
+        with self._conn() as c:
+            filas = c.execute(
+                "SELECT * FROM programaciones WHERE activa = 1 AND canal = ? AND usuario = ?"
+                " ORDER BY siguiente",
+                (canal, usuario),
+            ).fetchall()
+        return [dict(f) for f in filas]
+
+    def programaciones_vencidas(self, ahora: float) -> list[dict[str, Any]]:
+        with self._conn() as c:
+            filas = c.execute(
+                "SELECT * FROM programaciones WHERE activa = 1 AND siguiente <= ?"
+                " ORDER BY siguiente",
+                (ahora,),
+            ).fetchall()
+        return [dict(f) for f in filas]
+
+    def reprogramar(self, id_: int, siguiente: float | None) -> None:
+        """Siguiente disparo de una repetida, o se desactiva si ya no hay mas."""
+        with self._conn() as c:
+            if siguiente is None:
+                c.execute("UPDATE programaciones SET activa = 0 WHERE id = ?", (id_,))
+            else:
+                c.execute(
+                    "UPDATE programaciones SET siguiente = ? WHERE id = ?", (siguiente, id_)
+                )
+
+    def cancelar_programacion(self, id_: int, *, canal: str, usuario: str) -> bool:
+        """Solo la suya: nadie cancela lo que programo otro."""
+        with self._conn() as c:
+            cur = c.execute(
+                "UPDATE programaciones SET activa = 0 WHERE id = ? AND activa = 1"
+                " AND canal = ? AND usuario = ?",
+                (id_, canal, usuario),
+            )
+            return cur.rowcount > 0
 
 
 def _turno_actual(c: sqlite3.Connection, conversacion: str) -> int:

@@ -15,16 +15,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+import time
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
-from ..tiempo import zona
+from ..tiempo import formatear, zona
+from ..tools.programar import siguiente_repeticion
 
 if TYPE_CHECKING:
     from ..app import Aplicacion
     from ..channels.telegram import BotTelegram
+    from ..channels.whatsapp import CanalWhatsApp
 
 log = logging.getLogger(__name__)
 
@@ -52,11 +57,25 @@ Si hay algo, describelo en una o dos frases y di que harias.
 
 SIN_NOVEDAD = "SIN NOVEDAD"
 
+PROMPT_PROGRAMADA = """\
+[Orden programada] Es la hora de algo que dejaste programado el {creado}:
+«{orden}». Hazlo ahora con tus herramientas y responde en una o dos lineas
+con lo que has hecho de verdad. Si es un recordatorio, escribe el aviso tal
+cual, sin adornos. Si hace falta una accion de riesgo alto, no la puedes
+ejecutar sin nadie delante: dilo y deja claro que hay que pedirla en el chat.
+"""
+
 
 class Rutinas:
-    def __init__(self, app: Aplicacion, bot: BotTelegram | None) -> None:
+    def __init__(
+        self,
+        app: Aplicacion,
+        bot: BotTelegram | None,
+        whatsapp: CanalWhatsApp | None = None,
+    ) -> None:
         self.app = app
         self.bot = bot
+        self.whatsapp = whatsapp
         # La zona resuelta, no la cadena: con un nombre mal escrito
         # AsyncIOScheduler lanza dentro del lifespan y no arranca el backend
         # entero. `tiempo.zona()` degrada a UTC, que es lo que hace el resto
@@ -65,8 +84,21 @@ class Rutinas:
 
     def iniciar(self, *, hora_informe: int = 8, minutos_vigilancia: int = 30) -> None:
         """Arranca el planificador. Hace falta un bucle de eventos corriendo."""
+        if self.bot is not None or self.whatsapp is not None:
+            # Las ordenes programadas por chat: un vistazo por minuto a las
+            # que han vencido. Sin canal por el que avisar no tiene sentido,
+            # y la herramienta tampoco se ofrece.
+            self.scheduler.add_job(
+                self._programadas,
+                IntervalTrigger(minutes=1),
+                id="programaciones",
+                replace_existing=True,
+                max_instances=1,
+            )
         if not self._destinos():
             log.info("Rutinas proactivas desactivadas: no hay chats de Telegram autorizados.")
+            if self.scheduler.get_jobs():
+                self.scheduler.start()
             return
         self.scheduler.add_job(
             self._informe,
@@ -169,3 +201,52 @@ class Rutinas:
                 await self.bot.application.bot.send_message(chat_id=chat_id, text=texto)
             except Exception:  # noqa: BLE001
                 log.exception("No se pudo enviar el aviso al chat %s", chat_id)
+
+    # --- Ordenes programadas por chat ------------------------------------
+    async def _programadas(self, ahora: float | None = None) -> None:
+        """Ejecuta las que han vencido, cada una con la identidad de quien la pidio."""
+        momento = time.time() if ahora is None else ahora
+        for p in self.app.store.programaciones_vencidas(momento):
+            # Primero se reprograma o se apaga: si el turno fallara a medias,
+            # no se repetiria cada minuto hasta el infinito.
+            self.app.store.reprogramar(p["id"], self._siguiente(p, momento))
+            try:
+                await self._ejecutar_programada(p)
+            except Exception:  # noqa: BLE001 - una orden que falla no tumba el resto
+                log.exception("Fallo la orden programada %s", p["id"])
+
+    def _siguiente(self, p: dict[str, Any], momento: float) -> float | None:
+        if not p.get("hora"):
+            return None
+        desde = datetime.fromtimestamp(momento, zona(self.app.settings))
+        return siguiente_repeticion(desde, p["hora"], p["dias"] or "diario").timestamp()
+
+    async def _ejecutar_programada(self, p: dict[str, Any]) -> None:
+        conversacion = f"programada:{p['id']}"
+        self.app.store.limpiar_conversacion(conversacion)
+        texto = await self.app.responder(
+            # Con el canal y el usuario de quien la pidio: mismos permisos, y
+            # un nino sigue siendo un nino a las 8 de la manana.
+            canal=p["canal"],
+            usuario=p["usuario"],
+            conversacion=conversacion,
+            entrada=PROMPT_PROGRAMADA.format(
+                creado=formatear(p["creado"], self.app.settings, "%d/%m %H:%M"),
+                orden=p["orden"],
+            ),
+            confirmacion="imposible",
+        )
+        await self._enviar(p["conversacion"], f"⏰ {texto}")
+
+    async def _enviar(self, conversacion: str, texto: str) -> None:
+        """Al chat donde se pidio: el id de conversacion lleva el canal y el destino."""
+        canal, _, destino = conversacion.partition(":")
+        try:
+            if canal == "telegram" and self.bot is not None and self.bot.application is not None:
+                await self.bot.application.bot.send_message(chat_id=int(destino), text=texto)
+            elif canal == "whatsapp" and self.whatsapp is not None:
+                await self.whatsapp._enviar(destino, texto)
+            else:
+                log.info("Sin canal para entregar la orden de %s: %s", conversacion, texto)
+        except Exception:  # noqa: BLE001
+            log.exception("No se pudo entregar la orden programada a %s", conversacion)

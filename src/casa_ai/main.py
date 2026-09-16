@@ -207,7 +207,7 @@ def crear_app() -> FastAPI:
         else:
             log.info("TELEGRAM_TOKEN no configurado: canal de Telegram desactivado.")
 
-        rutinas = Rutinas(aplicacion, bot)
+        rutinas = Rutinas(aplicacion, bot, whatsapp if whatsapp.configurado else None)
         rutinas.iniciar()
 
         try:

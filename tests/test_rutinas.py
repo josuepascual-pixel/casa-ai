@@ -200,7 +200,7 @@ async def test_con_chats_se_programan_las_dos_rutinas(
     try:
         rutinas.iniciar(hora_informe=7, minutos_vigilancia=15)
         ids = {j.id for j in rutinas.scheduler.get_jobs()}
-        assert ids == {"informe_matinal", "vigilancia"}
+        assert ids == {"informe_matinal", "vigilancia", "programaciones"}
     finally:
         rutinas.detener()
 
