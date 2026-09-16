@@ -24,7 +24,7 @@ personas:
 # Por los puntos de acceso y switches que hay en UniFi.
 zonas:
   - salon
-  - comedor
+  - bodega
   - cocina
   - despensa
   - recibidor
@@ -57,7 +57,7 @@ camaras:
 
 # Los reproductores los encuentra `python -m casa_ai.descubrir` y escribe
 # este bloque con sus IP. Por los nombres cableados de UniFi, cabe esperar
-# uno en salon, comedor, cine, suite, gym y exterior.
+# uno en salon, cocina, cine, suite, gym y exterior.
 bluos: []
 
 # Altavoces por los que Jarvis habla (voz_hablar y el informe de las 8).
@@ -82,7 +82,7 @@ plano:
   # (entrada, corredera...) van a la entrada.
   - {zona: cocina,               planta: Planta baja, x: 0,  y: 0, ancho: 3, alto: 3}
   - {zona: despensa,             planta: Planta baja, x: 0,  y: 3, ancho: 3, alto: 1}
-  - {zona: comedor,              planta: Planta baja, x: 3,  y: 0, ancho: 3, alto: 3}
+  - {zona: bodega,               planta: Planta baja, x: 3,  y: 0, ancho: 3, alto: 3, alias: [desescarche]}
   - {zona: salon,                planta: Planta baja, x: 6,  y: 0, ancho: 5, alto: 4, alias: [porche, rampa]}
   - {zona: gym,                  planta: Planta baja, x: 3,  y: 3, ancho: 3, alto: 3, alias: [gimnasio]}
   - {zona: recibidor,            planta: Planta baja, x: 0,  y: 4, ancho: 2, alto: 2, alias: [entrada, escalera, ascensor, puerta exterior, corredera]}
