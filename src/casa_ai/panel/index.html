@@ -97,6 +97,66 @@
   .pestanas button.activa .pastilla-icono { background: var(--cian-suave); }
   .pastilla-icono { display: grid; place-items: center; width: 48px; height: 30px; border-radius: 999px; }
 
+  /* --- Inicio: plano ---------------------------------------------------- */
+  .plano-tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio);
+                   padding: 14px 12px 10px; margin-bottom: 12px; }
+  .plano-cabecera { display: flex; align-items: center; gap: 10px; margin: 0 4px 8px; }
+  .plano-cabecera .seccion-titulo { margin: 0; flex: 1; }
+  .plano-leyenda { display: flex; gap: 12px; font-size: 11px; color: var(--tinta-apagada); }
+  .plano-leyenda span { display: inline-flex; align-items: center; gap: 4px; }
+  .plano-leyenda i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+  .plano { width: 100%; height: auto; display: block; max-width: 100%; }
+  .plano .estancia { cursor: pointer; }
+  .plano .suelo { fill: var(--superficie-2); stroke: var(--linea); stroke-width: 1.5; transition: fill .3s; }
+  .plano .exterior .suelo { fill: color-mix(in oklab, var(--bien) 10%, var(--superficie-2));
+                            stroke-dasharray: 4 4; stroke: color-mix(in oklab, var(--bien) 40%, var(--linea)); }
+  .plano .agua .suelo { fill: color-mix(in oklab, var(--cian) 14%, var(--superficie-2)); }
+  .plano .luz .suelo { fill: color-mix(in oklab, var(--oro) 22%, var(--superficie-2));
+                       stroke: color-mix(in oklab, var(--oro) 55%, var(--linea)); }
+  .plano .luz { filter: drop-shadow(0 0 6px color-mix(in oklab, var(--oro) 45%, transparent)); }
+  .plano .clima .suelo { stroke: var(--cian); stroke-width: 2; }
+  .plano .alerta .suelo { stroke: var(--aviso); stroke-width: 2.5; }
+  .plano .estancia:hover .suelo, .plano .estancia:focus-visible .suelo { filter: brightness(1.08); }
+  .plano .estancia:focus-visible { outline: none; }
+  .plano .nombre { font: 600 10.5px var(--fuente-cifra); fill: var(--tinta); pointer-events: none; }
+  .plano .grados { font: 600 12px var(--fuente-cifra); fill: var(--cian); pointer-events: none; }
+  .plano .exterior .grados { fill: var(--bien); }
+  .plano .simbolo { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .plano .simbolo.luz { stroke: var(--oro); }
+  .plano .simbolo.musica { stroke: var(--bien); }
+  .plano .simbolo.camara { stroke: var(--tinta-apagada); }
+  .plano .simbolo.persiana { stroke: var(--cian); }
+  .plano .simbolo.alerta { stroke: var(--aviso); }
+  .plano .cuenta { font: 600 9px var(--fuente-mono); fill: var(--oro); pointer-events: none; }
+
+  .tira-energia { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
+  .tira-energia button { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; border-radius: 14px;
+    border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta); }
+  .tira-energia svg { width: 20px; height: 20px; }
+  .tira-energia .valor { font: 600 15px var(--fuente-cifra); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .tira-energia .etiqueta { font-size: 10px; color: var(--tinta-apagada); text-transform: uppercase; letter-spacing: .08em; }
+  .tira-energia .sol { color: var(--oro); } .tira-energia .bat { color: var(--cian); } .tira-energia .red { color: var(--malva); }
+
+  .carril { display: flex; gap: 10px; overflow-x: auto; padding: 4px 4px 12px; margin: 0 -4px;
+            scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .carril::-webkit-scrollbar { display: none; }
+  .ficha { flex: none; width: 104px; display: grid; justify-items: center; gap: 6px; padding: 12px 6px;
+           border-radius: 16px; border: 1px solid var(--borde); background: var(--superficie); color: var(--tinta);
+           text-align: center; scroll-snap-align: start; cursor: pointer; }
+  .ficha .ic { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+               background: var(--superficie-2); color: var(--tinta-2); }
+  .ficha .ic svg { width: 24px; height: 24px; }
+  .ficha .nombre { font: 600 12px var(--fuente-cifra); line-height: 1.2; }
+  .ficha .estado { font-size: 11px; color: var(--tinta-2); width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ficha.activo .ic { background: var(--cian-suave); color: var(--cian); }
+  .ficha.oro .ic { background: var(--oro-suave); color: var(--oro); }
+  .ficha.bien .ic { background: var(--bien-suave); color: var(--bien); }
+  .ficha.aviso .ic { background: var(--aviso-suave); color: var(--aviso); }
+  .ficha.aviso { border-color: color-mix(in oklab, var(--aviso) 45%, var(--borde)); }
+  .ficha.aviso .estado { color: var(--aviso); }
+  .ficha.critico .ic { background: var(--critico-suave); color: var(--critico); }
+  .ficha:active { transform: scale(.97); }
+
   /* --- Inicio: aviso y losetas ---------------------------------------- */
   .aviso-casa {
     display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px;
@@ -309,7 +369,20 @@
     <!-- Inicio: la casa de un vistazo -->
     <section data-vista="inicio" class="activa">
       <div id="aviso-casa" class="aviso-casa oculto"></div>
-      <div class="losetas" id="losetas"></div>
+      <div class="plano-tarjeta">
+        <div class="plano-cabecera">
+          <span class="seccion-titulo">La casa</span>
+          <span class="plano-leyenda">
+            <span><i style="background: var(--oro)"></i>luz</span>
+            <span><i style="background: var(--cian)"></i>clima</span>
+            <span><i style="background: var(--bien)"></i>música</span>
+          </span>
+        </div>
+        <svg class="plano" id="plano" role="img" aria-label="Plano de la casa"></svg>
+      </div>
+      <div class="tira-energia" id="tira-energia"></div>
+      <p class="seccion-titulo">Sistemas</p>
+      <div class="carril" id="losetas"></div>
     </section>
 
     <!-- Energia -->

@@ -11,6 +11,7 @@ conviene duplicar en JavaScript.
 
 from __future__ import annotations
 
+import unicodedata
 from typing import Any
 
 from ..adapters.homeassistant import es_acceso
@@ -68,6 +69,13 @@ async def recopilar(ctx: Contexto) -> dict[str, Any]:
         tareas["musica"] = ctx.musica.estado_todos()
 
     datos: dict[str, Any] = await reunir(**tareas)
+    # Las estancias necesitan los estados de HA (cacheados: la lectura de
+    # `_casa` acaba de hacerse) y lo que suena, que llego en paralelo.
+    casa = datos.get("casa")
+    if ctx.ha.configurado and isinstance(casa, dict) and "no_disponible" not in casa:
+        musica = datos.get("musica") if isinstance(datos.get("musica"), list) else []
+        datos["casa"]["habitaciones"] = _habitaciones(ctx, await ctx.ha.estados(), musica)
+    datos["plano"] = plano_de(ctx)
     datos["momento"] = ahora(ctx.settings).strftime("%H:%M:%S")
     # Para el saludo: solo si es una persona declarada (no «http sin registrar»).
     persona = ctx.persona
@@ -195,3 +203,119 @@ async def _casa(ctx: Contexto) -> dict[str, Any]:
             for p in por_dominio.get("person", [])
         ]
     return casa
+
+
+# --- Las estancias del plano -------------------------------------------------
+# Home Assistant no dice por REST en que area esta cada entidad, asi que la
+# estancia se deduce del nombre: `light.salon_techo` o «Persiana suite» van a
+# su zona. Cuando dos zonas encajan («suite» y «bano suite»), gana la mas
+# larga. Lo que no encaje con ninguna se puede declarar a mano en `plano:`.
+
+
+def _llano(texto: str) -> str:
+    sin_acentos = "".join(
+        c for c in unicodedata.normalize("NFD", texto.lower()) if unicodedata.category(c) != "Mn"
+    )
+    return " ".join(sin_acentos.replace("_", " ").replace(".", " ").split())
+
+
+def _habitaciones(
+    ctx: Contexto, estados: list[dict[str, Any]], musica: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    inv = ctx.inventario
+    estancias = list(inv.plano) or [
+        type("E", (), {"zona": z, "alias": [], "entidades": [], "exterior": False})()
+        for z in inv.zonas
+    ]
+    if not estancias:
+        return []
+    nombres = [(e, [_llano(e.zona), *(_llano(a) for a in e.alias)]) for e in estancias]
+    fijas = {eid: e for e in estancias for eid in e.entidades}
+
+    por_estancia: dict[str, list[dict[str, Any]]] = {e.zona: [] for e in estancias}
+    for est in estados:
+        eid = str(est.get("entity_id", ""))
+        destino = fijas.get(eid)
+        if destino is None:
+            texto = f"{_llano(eid)} {_llano(_nombre(est))}"
+            mejor = max(
+                ((e, n) for e, ns in nombres for n in ns if f" {n} " in f" {texto} "),
+                key=lambda par: len(par[1]), default=None,
+            )
+            destino = mejor[0] if mejor else None
+        if destino is not None:
+            por_estancia[destino.zona].append(est)
+
+    que_suena_en = {_llano(str(m.get("zona") or m.get("reproductor") or "")): m for m in musica}
+    camaras = {c.zona for c in inv.camaras}
+    salida = []
+    for e in estancias:
+        ents = por_estancia[e.zona]
+
+        def dominio(d: str, ents: list[dict[str, Any]] = ents) -> list[dict[str, Any]]:
+            return [x for x in ents if str(x.get("entity_id", "")).startswith(f"{d}.")]
+
+        luces = dominio("light")
+        covers = dominio("cover")
+        persianas = [c for c in covers if not es_acceso(c)]
+        accesos = [c for c in covers if es_acceso(c)] + dominio("lock")
+        climas = dominio("climate")
+        clima = climas[0] if climas else None
+        temp = None
+        for c in climas + dominio("sensor"):
+            atributos = c.get("attributes") or {}
+            if "current_temperature" in atributos:
+                temp = atributos["current_temperature"]
+                break
+            if atributos.get("device_class") == "temperature":
+                try:
+                    temp = float(c.get("state"))
+                except (TypeError, ValueError):
+                    temp = None
+                if temp is not None:
+                    break
+        que_suena = que_suena_en.get(_llano(e.zona))
+        salida.append({
+            "zona": e.zona,
+            "exterior": bool(e.exterior),
+            "luces": len(luces),
+            "luces_encendidas": sum(1 for x in luces if x.get("state") == "on"),
+            "persianas": len(persianas),
+            "persianas_abiertas": sum(
+                1 for x in persianas
+                if ((x.get("attributes") or {}).get("current_position") or 0) > 0
+                or (x.get("state") in ("open", "opening")
+                    and (x.get("attributes") or {}).get("current_position") is None)
+            ),
+            "accesos_abiertos": sum(
+                1 for x in accesos if str(x.get("state")) in ("open", "opening", "unlocked")
+            ),
+            "temperatura": temp,
+            "clima": _texto_estado(clima) if clima else None,
+            "musica": (
+                " — ".join(t for t in (que_suena.get("titulo"), que_suena.get("artista")) if t)
+                or que_suena.get("servicio") or "sonando"
+            ) if que_suena and que_suena.get("estado") in ("play", "stream") else None,
+            "camara": e.zona in camaras,
+            "entidades": [
+                {"nombre": _nombre(x), "estado": _texto_estado(x)} for x in ents
+            ],
+        })
+    return salida
+
+
+def plano_de(ctx: Contexto) -> list[dict[str, Any]]:
+    """La geometria del plano para dibujarlo, o una rejilla automatica."""
+    inv = ctx.inventario
+    if inv.plano:
+        return [
+            {"zona": e.zona, "x": e.x, "y": e.y, "ancho": e.ancho, "alto": e.alto,
+             "exterior": e.exterior}
+            for e in inv.plano
+        ]
+    columnas = 4
+    return [
+        {"zona": z, "x": (i % columnas) * 2, "y": (i // columnas) * 2, "ancho": 2, "alto": 2,
+         "exterior": False}
+        for i, z in enumerate(inv.zonas)
+    ]

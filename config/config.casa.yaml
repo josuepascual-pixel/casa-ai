@@ -56,6 +56,31 @@ bluos: []
 
 # Altavoces por los que Jarvis habla (voz_hablar y el informe de las 8).
 # Los entity_id salen tras la integracion Apple TV de Home Assistant.
+# El plano que dibuja el panel, en celdas (una celda ~ 2 m). Es un esquema
+# para empezar: mueve y cambia de tamano cada estancia hasta que se parezca
+# a la casa. `alias` son otras palabras con las que HA nombra esa zona
+# (p. ej. el cuarto de Leo puede llamarse "eros" en el KNX); `entidades`
+# fuerza entidades concretas a una estancia.
+plano:
+  # Planta principal: la zona de dia a la izquierda, la de noche a la derecha.
+  - {zona: cocina,           x: 0,  y: 0, ancho: 3, alto: 3}
+  - {zona: lavadero,         x: 0,  y: 3, ancho: 3, alto: 2}
+  - {zona: comedor,          x: 3,  y: 0, ancho: 3, alto: 3}
+  - {zona: salon,            x: 6,  y: 0, ancho: 4, alto: 3}
+  - {zona: pasillo,          x: 3,  y: 3, ancho: 7, alto: 1}
+  - {zona: despacho,         x: 3,  y: 4, ancho: 3, alto: 2}
+  - {zona: cine,             x: 6,  y: 4, ancho: 4, alto: 2}
+  - {zona: suite,            x: 10, y: 0, ancho: 4, alto: 3}
+  - {zona: bano suite,       x: 14, y: 0, ancho: 2, alto: 3}
+  - {zona: vestidor,         x: 10, y: 3, ancho: 2, alto: 1}
+  - {zona: dormitorio leo,   x: 10, y: 4, ancho: 3, alto: 2, alias: [eros, leo]}
+  - {zona: sala de juegos,   x: 13, y: 4, ancho: 3, alto: 2, alias: [juegos]}
+  - {zona: gym,              x: 12, y: 3, ancho: 4, alto: 1, alias: [gimnasio]}
+  # Fuera.
+  - {zona: barbacoa,         x: 0,  y: 6, ancho: 4, alto: 2, exterior: true}
+  - {zona: piscina,          x: 4,  y: 6, ancho: 7, alto: 2, exterior: true}
+  - {zona: exterior,         x: 11, y: 6, ancho: 5, alto: 2, exterior: true, alias: [jardin, terraza]}
+
 # Tarjetas del panel, una por sistema. Luces, persianas y toldos, accesos
 # (garaje, porton, cerradura Nuki), clima y quien esta en casa salen solos.
 # Cada tarjeta se descomenta cuando su integracion este instalada en Home

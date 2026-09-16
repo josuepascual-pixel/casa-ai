@@ -252,6 +252,15 @@ dispositivos:
 # Atajos en lenguaje natural para no depender de que el agente acierte el
 # entity_id. Todo lo de ONNA llega aqui a traves de la integracion `knx` de
 # Home Assistant, asi que estos alias son la via normal de control.
+# El plano que dibuja el panel, en celdas (una celda ~ 2 m). Sin esta
+# seccion, las `zonas:` se colocan solas en una rejilla. `alias` son otras
+# palabras con las que Home Assistant nombra la zona; `entidades` fuerza
+# entidades concretas a una estancia.
+plano:
+  - {zona: cocina, x: 0, y: 0, ancho: 3, alto: 2}
+  - {zona: salon,  x: 3, y: 0, ancho: 4, alto: 2, alias: [living]}
+  - {zona: jardin, x: 0, y: 2, ancho: 7, alto: 1, exterior: true, entidades: [switch.knx_riego]}
+
 # Tarjetas del panel, una por sistema. Luces, persianas, accesos, clima y
 # quien esta en casa salen solos (por dominio); esto es para lo que llega por
 # una integracion concreta y merece su tarjeta. Los valores admiten alias.

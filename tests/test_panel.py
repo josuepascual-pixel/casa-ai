@@ -401,3 +401,61 @@ async def test_a_un_nino_el_panel_no_le_dice_quien_esta_en_casa(settings, store)
     casa = await _casa(ctx)
     assert "presencia" not in casa
     assert casa["luces"]["total"] == 2
+
+
+async def test_el_plano_reparte_las_entidades_por_estancia(settings, store) -> None:
+    """La estancia se deduce del nombre; entre «suite» y «bano suite» gana la
+    mas larga; los alias y las entidades fijas mandan sobre el nombre."""
+    from casa_ai.panel.datos import _habitaciones, plano_de
+    from casa_ai.settings import Inventario
+
+    from .dobles import adaptador, contexto, entidad
+
+    inv = Inventario.model_validate({
+        "camaras": [{"nombre": "Cine", "zona": "cine"}],
+        "plano": [
+            {"zona": "salon", "x": 0, "y": 0, "ancho": 3, "alto": 2},
+            {"zona": "suite", "x": 3, "y": 0},
+            {"zona": "bano suite", "x": 5, "y": 0},
+            {"zona": "dormitorio leo", "alias": ["eros"]},
+            {"zona": "cine", "entidades": ["light.proyector"]},
+            {"zona": "piscina", "exterior": True},
+        ],
+    })
+    estados = [
+        entidad("light.salon_techo", "on", friendly_name="Techo salón"),
+        entidad("light.salon_lampara", "off"),
+        entidad("climate.salon", "cool", current_temperature=24.5, temperature=23),
+        entidad("cover.persiana_suite", "open", current_position=40),
+        entidad("light.bano_suite", "on", friendly_name="Baño suite"),
+        entidad("light.dormitorio_eros", "on"),
+        entidad("light.proyector", "on", friendly_name="Proyector"),
+        entidad("sensor.temperatura_piscina", "27.5", device_class="temperature",
+                unit_of_measurement="°C"),
+        entidad("lock.puerta_principal", "unlocked"),
+    ]
+    ctx = contexto(settings, inv, store, ha=adaptador(True))
+    musica = [{"reproductor": "Salon", "zona": "salon", "estado": "play",
+               "titulo": "So What", "artista": "Miles Davis"}]
+    por_zona = {h["zona"]: h for h in _habitaciones(ctx, estados, musica)}
+
+    salon = por_zona["salon"]
+    assert salon["luces"] == 2 and salon["luces_encendidas"] == 1
+    assert salon["temperatura"] == 24.5 and salon["clima"] == "frio"
+    assert salon["musica"] == "So What — Miles Davis"
+    assert {e["nombre"] for e in salon["entidades"]} == {"Techo salón", "light.salon_lampara",
+                                                          "climate.salon"}
+    assert por_zona["suite"]["persianas_abiertas"] == 1
+    assert por_zona["bano suite"]["luces_encendidas"] == 1  # no se la lleva «suite»
+    assert por_zona["dormitorio leo"]["luces_encendidas"] == 1  # por el alias
+    assert por_zona["cine"]["luces_encendidas"] == 1 and por_zona["cine"]["camara"]
+    assert por_zona["piscina"]["temperatura"] == 27.5 and por_zona["piscina"]["exterior"]
+    # La cerradura no es de ninguna estancia: no se pierde nada, pero no se inventa.
+    assert not any("puerta" in e["nombre"] for h in por_zona.values() for e in h["entidades"])
+
+    plano = plano_de(ctx)
+    assert plano[0] == {"zona": "salon", "x": 0, "y": 0, "ancho": 3, "alto": 2, "exterior": False}
+    # Sin plano, las zonas se colocan solas.
+    ctx.inventario = Inventario.model_validate({"zonas": ["a", "b", "c", "d", "e"]})
+    auto = plano_de(ctx)
+    assert [p["zona"] for p in auto] == ["a", "b", "c", "d", "e"] and auto[4]["y"] == 2

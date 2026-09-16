@@ -182,6 +182,25 @@ class Planta(BaseModel):
     invertir_signo_bateria: bool = False
 
 
+class Estancia(BaseModel):
+    """Una estancia en el plano del panel, en una rejilla de celdas.
+
+    `x`, `y`, `ancho` y `alto` son celdas (una celda ~ 2 m). Las entidades
+    de Home Assistant se asignan a la estancia por su nombre (si el entity_id
+    o el nombre visible contienen el de la zona o uno de sus `alias`), y ademas
+    por las declaradas a mano en `entidades`.
+    """
+
+    zona: str
+    x: int = 0
+    y: int = 0
+    ancho: int = 2
+    alto: int = 2
+    exterior: bool = False
+    alias: list[str] = Field(default_factory=list)
+    entidades: list[str] = Field(default_factory=list)
+
+
 class TarjetaPanel(BaseModel):
     """Una tarjeta del panel con las lecturas de un sistema de la casa.
 
@@ -295,6 +314,9 @@ class Inventario(BaseModel):
     dispositivos: list[Dispositivo] = Field(default_factory=list)
     # Tarjetas del panel por sistema (coche, agua, spa, riego, cine...).
     panel: list[TarjetaPanel] = Field(default_factory=list)
+    # El plano de la casa que dibuja el panel. Sin el, las zonas se colocan
+    # solas en una rejilla.
+    plano: list[Estancia] = Field(default_factory=list)
     # Alias en lenguaje natural -> entity_id de Home Assistant.
     # Permite decir "apaga el salon" sin que el agente adivine el entity_id.
     alias_entidades: dict[str, str] = Field(default_factory=dict)

@@ -452,7 +452,7 @@ function losetasDe(datos) {
   if (casa?.persianas?.length) {
     const abiertas = casa.persianas.filter((p) =>
       p.posicion !== null && p.posicion !== undefined ? p.posicion > 0 : p.estado !== "cerrada");
-    salida.push({ id: "persianas", icono: "persiana", titulo: "Persianas y toldos", tono: abiertas.length ? "activo" : "neutro",
+    salida.push({ id: "persianas", icono: "persiana", titulo: "Persianas", tono: abiertas.length ? "activo" : "neutro",
       estado: abiertas.length ? `${abiertas.length} de ${casa.persianas.length} abiertas` : "Todas cerradas",
       detalle: () => lista(casa.persianas, (p) => {
         if (p.posicion === null || p.posicion === undefined) {
@@ -551,9 +551,10 @@ function losetasDe(datos) {
 function pintarLosetas(datos) {
   const cont = $("losetas");
   cont.textContent = "";
-  const losetas = losetasDe(datos);
+  // La energia y las camaras tienen su sitio (la tira y su pestana).
+  const losetas = losetasDe(datos).filter((l) => !l.ir);
   for (const l of losetas) {
-    const b = el("button", `loseta ${l.tono}`);
+    const b = el("button", `ficha ${l.tono}`);
     b.type = "button";
     const ic = el("span", "ic");
     ic.appendChild(icono(l.icono));
@@ -579,6 +580,159 @@ function pintarLosetas(datos) {
   } else {
     aviso.classList.add("oculto");
   }
+}
+
+// --- El plano de la casa ----------------------------------------------------
+// Cada estancia es un rectangulo de la rejilla de `plano:`; se tine de oro
+// con luz encendida, lleva borde cian con el clima en marcha y ambar si hay un
+// acceso abierto. Dentro, la temperatura y un simbolo por cada cosa que pasa.
+// Tocarla abre la hoja con lo que hay en ella.
+
+const NS = "http://www.w3.org/2000/svg";
+const CELDA = 40;
+
+function svg(tag, atributos = {}) {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(atributos)) n.setAttribute(k, String(v));
+  return n;
+}
+
+// Un icono de ICONOS, reducido, para dentro del plano.
+function simbolo(nombre, x, y, clase, escala = 0.55) {
+  const g = svg("g", { class: `simbolo ${clase}`, transform: `translate(${x} ${y}) scale(${escala})` });
+  for (const d of ICONOS[nombre] || []) g.appendChild(svg("path", { d }));
+  return g;
+}
+
+// Las zonas se escriben sin acentos en el YAML (sirven para casar nombres de
+// entidades); en el plano se ensenan con ellos.
+const ACENTOS = new Map([["salon", "salón"], ["bano", "baño"], ["jardin", "jardín"], ["sotano", "sótano"],
+  ["atico", "ático"], ["habitacion", "habitación"], ["balcon", "balcón"], ["recibidor", "recibidor"]]);
+function capitalizar(t) {
+  if (!t) return t;
+  const bonito = t.split(" ").map((p) => ACENTOS.get(p) || p).join(" ");
+  return bonito.charAt(0).toUpperCase() + bonito.slice(1);
+}
+
+function pintarPlano(datos) {
+  const plano = Array.isArray(datos.plano) ? datos.plano : [];
+  const svgPlano = $("plano");
+  svgPlano.textContent = "";
+  if (!plano.length) { svgPlano.parentElement.classList.add("oculto"); return; }
+  svgPlano.parentElement.classList.remove("oculto");
+  const habitaciones = new Map(((hayDatos(datos.casa) && datos.casa.habitaciones) || []).map((h) => [h.zona, h]));
+
+  const M = 6;
+  const anchoMax = Math.max(...plano.map((e) => e.x + e.ancho));
+  const altoMax = Math.max(...plano.map((e) => e.y + e.alto));
+  svgPlano.setAttribute("viewBox", `0 0 ${anchoMax * CELDA + M * 2} ${altoMax * CELDA + M * 2}`);
+
+  for (const e of plano) {
+    const h = habitaciones.get(e.zona) || {};
+    const x = M + e.x * CELDA, y = M + e.y * CELDA, w = e.ancho * CELDA - 4, alto = e.alto * CELDA - 4;
+    const clases = ["estancia"];
+    if (e.exterior) clases.push("exterior");
+    if (/piscina|spa|jacuzzi/i.test(e.zona)) clases.push("agua");
+    if (h.luces_encendidas) clases.push("luz");
+    if (h.clima && !["off", "apagada", "en reposo"].includes(h.clima)) clases.push("clima");
+    if (h.accesos_abiertos) clases.push("alerta");
+    const g = svg("g", { class: clases.join(" "), tabindex: "0", role: "button" });
+    g.appendChild(svg("rect", { class: "suelo", x, y, width: w, height: alto, rx: 7 }));
+    g.appendChild(svg("title")).textContent = capitalizar(e.zona);
+
+    // Nombre, recortado a lo que cabe.
+    const nombre = capitalizar(e.zona);
+    const hayTemp = h.temperatura !== null && h.temperatura !== undefined;
+    const bajo = alto < 44;  // una celda de alto: todo en una linea
+    // La temperatura va a la derecha del nombre si caben los dos; si no, debajo.
+    const anchoNombre = nombre.length * 6.3;
+    const tempAlLado = hayTemp && !bajo && anchoNombre + 40 <= w - 12;
+    const tempDebajo = hayTemp && !bajo && !tempAlLado && alto >= 60;
+    const cabe = Math.max(3, Math.floor((w - 10 - (tempAlLado ? 38 : 0)) / 6.3));
+    const t = svg("text", { class: "nombre", x: x + 6, y: y + 14 });
+    t.textContent = nombre.length > cabe ? `${nombre.slice(0, cabe - 1)}…` : nombre;
+    g.appendChild(t);
+    if (tempAlLado || tempDebajo) {
+      const tt = svg("text", { class: "grados", x: tempAlLado ? x + w - 6 : x + 6, y: tempAlLado ? y + 15 : y + 30,
+                               "text-anchor": tempAlLado ? "end" : "start" });
+      tt.textContent = grados(h.temperatura);
+      g.appendChild(tt);
+    }
+
+    // Simbolos: abajo a la izquierda, o a la derecha del nombre si el cuarto
+    // es de una sola celda de alto. Los que quepan.
+    const simbolos = [];
+    if (h.luces_encendidas) simbolos.push(["luz", "luz", h.luces_encendidas]);
+    if (h.musica) simbolos.push(["musica", "musica"]);
+    if (h.persianas_abiertas) simbolos.push(["persiana", "persiana"]);
+    if (h.accesos_abiertos) simbolos.push(["alerta", "alerta"]);
+    if (h.camara) simbolos.push(["camara", "camara"]);
+    const ancho = (s) => 18 + (s[2] > 1 ? 8 : 0);
+    let sx, sy;
+    if (bajo) {
+      const total = simbolos.reduce((a, s) => a + ancho(s), 0);
+      sx = x + w - 4 - total; sy = y + alto / 2 - 7;
+      if (sx < x + 6 + Math.min(anchoNombre, cabe * 6.3)) { simbolos.length = 0; }
+    } else {
+      sx = x + 6; sy = y + alto - 19;
+    }
+    for (const s of simbolos) {
+      const [ic, clase, cuenta] = s;
+      if (sx + 14 > x + w - 4) break;
+      g.appendChild(simbolo(ic, sx, sy, clase));
+      if (cuenta && cuenta > 1) {
+        const c = svg("text", { class: "cuenta", x: sx + 14, y: sy + 5 });
+        c.textContent = String(cuenta);
+        g.appendChild(c);
+      }
+      sx += ancho(s);
+    }
+
+    const abrir = () => abrirHoja({ titulo: capitalizar(e.zona), icono: e.exterior ? "sol" : "casa", detalle: () => detalleEstancia(e, h) });
+    g.addEventListener("click", abrir);
+    g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); abrir(); } });
+    svgPlano.appendChild(g);
+  }
+}
+
+function detalleEstancia(e, h) {
+  const cont = el("div");
+  const resumen = el("ul");
+  const anade = (texto, valor, pastilla) => resumen.appendChild(fila(null, texto, valor, { pastilla }));
+  if (h.luces) anade("Luces", h.luces_encendidas ? `${h.luces_encendidas} de ${h.luces} encendidas` : "todas apagadas", h.luces_encendidas ? "aviso" : "neutra");
+  if (h.temperatura !== null && h.temperatura !== undefined) anade("Temperatura", grados(h.temperatura), "cian");
+  if (h.clima) anade("Clima", h.clima, ["off", "apagada", "en reposo"].includes(h.clima) ? "neutra" : "cian");
+  if (h.persianas) anade("Persianas", h.persianas_abiertas ? `${h.persianas_abiertas} de ${h.persianas} abiertas` : "todas cerradas", h.persianas_abiertas ? "cian" : "neutra");
+  if (h.accesos_abiertos) anade("Acceso", "abierto", "aviso");
+  if (h.musica) anade("Sonando", h.musica, "bien");
+  if (h.camara) anade("Cámara", "ver en Cámaras", "neutra");
+  if (!resumen.children.length) resumen.appendChild(el("li", "vacio", "Nada declarado en esta estancia todavía."));
+  cont.appendChild(resumen);
+  if (h.entidades && h.entidades.length) {
+    cont.appendChild(el("p", "seccion-titulo", "Todo lo que hay"));
+    cont.appendChild(lista(h.entidades, (x) => fila(null, x.nombre, x.estado)));
+  }
+  return cont;
+}
+
+function pintarTiraEnergia(energia) {
+  const cont = $("tira-energia");
+  cont.textContent = "";
+  if (!visible("tira-energia", hayDatos(energia))) return;
+  const r = energia.resumen;
+  const chip = (clase, ic, valor, etiqueta) => {
+    const b = el("button", clase);
+    b.type = "button";
+    b.append(icono(ic), el("span", "valor", valor), el("span", "etiqueta", etiqueta));
+    b.addEventListener("click", () => irA("energia"));
+    return b;
+  };
+  cont.append(
+    chip("sol", "sol", vatios(r.solar_w), "sol"),
+    chip("casa", "casa", vatios(r.consumo_casa_w), "casa"),
+    chip("bat", "bateria", r.bateria_soc_pct === null || r.bateria_soc_pct === undefined ? "—" : `${Math.round(r.bateria_soc_pct)} %`, "batería"),
+    chip("red", "red", `${r.red_estado === "exportando" ? "↑" : "↓"} ${vatios(Math.abs(r.red_w))}`, "red"),
+  );
 }
 
 // --- Hoja de detalle --------------------------------------------------------
@@ -700,6 +854,8 @@ async function refrescar() {
     ultimosDatos = datos;
     $("momento").textContent = datos.momento;
     $("saludo").textContent = saludo(datos.quien);
+    pintarPlano(datos);
+    pintarTiraEnergia(datos.energia);
     pintarLosetas(datos);
     pintarIndicadores(datos.energia);
     pintarBateria(datos.energia);
@@ -723,7 +879,8 @@ async function entrar() {
   $("acceso").classList.add("oculto");
   $("contenido").classList.remove("oculto");
   $("pestanas").classList.remove("oculto");
-  $("salir").classList.remove("oculto");
+  // Por el ingress no hay token que olvidar.
+  $("salir").classList.toggle("oculto", !token());
   let vista = "inicio";
   try { vista = localStorage.getItem(CLAVE_VISTA) || "inicio"; } catch { /* nada */ }
   irA(document.querySelector(`[data-vista="${vista}"]`) ? vista : "inicio");
