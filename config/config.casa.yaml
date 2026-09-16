@@ -35,6 +35,7 @@ zonas:
   - vestidor
   - dormitorio leo
   - bano leo
+  - vestidor leo
   - dormitorio 2
   - dormitorio 3
   - bano invitados
@@ -101,10 +102,11 @@ plano:
   - {zona: vestidor,             planta: Planta alta, x: 7,  y: 0, ancho: 2, alto: 3}
   - {zona: dormitorio 3,         planta: Planta alta, x: 9,  y: 0, ancho: 3, alto: 3}
   - {zona: pasillo alta,         planta: Planta alta, x: 0,  y: 3, ancho: 12, alto: 1, alias: [distribuidor]}
-  - {zona: dormitorio leo,       planta: Planta alta, x: 0,  y: 4, ancho: 3, alto: 2, alias: [leo]}
-  - {zona: bano leo,             planta: Planta alta, x: 3,  y: 4, ancho: 2, alto: 2, alias: [bano leo]}
-  - {zona: dormitorio 2,         planta: Planta alta, x: 5,  y: 4, ancho: 3, alto: 2}
-  - {zona: bano invitados,       planta: Planta alta, x: 8,  y: 4, ancho: 2, alto: 2, alias: [invitados]}
+  - {zona: dormitorio leo,       planta: Planta alta, x: 0,  y: 4, ancho: 4, alto: 2, alias: [leo, tobogan]}
+  - {zona: vestidor leo,         planta: Planta alta, x: 4,  y: 4, ancho: 1, alto: 2, alias: [vestidor leo]}
+  - {zona: bano leo,             planta: Planta alta, x: 5,  y: 4, ancho: 2, alto: 2, alias: [bano leo]}
+  - {zona: dormitorio 2,         planta: Planta alta, x: 7,  y: 4, ancho: 3, alto: 2}
+  - {zona: bano invitados,       planta: Planta alta, x: 10, y: 4, ancho: 2, alto: 2, alias: [invitados]}
   # Exterior, segun ONNA: piscina, jacuzzi, barbacoa, iluminacion, estacion meteorologica.
   - {zona: barbacoa,             planta: Exterior, x: 0,  y: 0, ancho: 4, alto: 3, exterior: true}
   - {zona: piscina,              planta: Exterior, x: 4,  y: 0, ancho: 5, alto: 3, exterior: true}
