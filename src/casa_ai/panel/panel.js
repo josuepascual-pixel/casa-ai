@@ -574,9 +574,10 @@ function pintarLosetas(datos) {
   const abiertos = (hayDatos(datos.casa) ? datos.casa.accesos || [] : []).filter((a) => a.abierto);
   if (abiertos.length) {
     aviso.className = "aviso-casa";
-    const todasVentanas = abiertos.every((a) => a.ventana);
-    aviso.append(icono("alerta"), el("span", null,
-      `${abiertos.map((a) => a.nombre).join(" y ")}: ${todasVentanas ? (abiertos.length === 1 ? "abierta" : "abiertas") : "abierto"}`));
+    const texto = abiertos.length === 1
+      ? `${abiertos[0].nombre}: ${abiertos[0].ventana ? "abierta" : "abierto"}`
+      : `Abierto: ${abiertos.map((a) => a.nombre).join(" · ")}`;
+    aviso.append(icono("alerta"), el("span", null, texto));
   } else if (hayDatos(datos.casa) && (datos.casa.accesos || []).length) {
     aviso.className = "aviso-casa tranquilo";
     aviso.append(icono("bien"), el("span", null, "Todo cerrado"));
@@ -637,7 +638,7 @@ function pintarPlano(datos) {
       plantaActual = plantas.includes(guardada) ? guardada : plantas[0];
     }
     for (const p of plantas) {
-      const b = el("button", p === plantaActual ? "activa" : "", p || "Casa");
+      const b = el("button", p === plantaActual ? "activa" : "", p ? capitalizar(p.toLowerCase()) : "Casa");
       b.type = "button";
       b.addEventListener("click", () => {
         plantaActual = p;
