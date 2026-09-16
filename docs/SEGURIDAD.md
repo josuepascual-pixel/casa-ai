@@ -150,6 +150,18 @@ conjunto estático de estados— pero no metas cerraduras en una escena.
   ejecutar, no solo al ofrecer, así que un modelo con el contexto envenenado
   tampoco puede saltárselo. Un chat autorizado que no esté declarado cuenta
   como niño. El token del API, la terminal y las rutinas son del dueño.
+- **Escribe código, pero no lo ejecuta ni actúa por su cuenta.** No hay
+  herramienta de ejecución de código, ni terminal, ni escritura en disco: un
+  programa que pide el usuario es texto que le llega como archivo y que
+  ejecuta él, donde quiera. No puede tocar su propia configuración ni su
+  código. En Home Assistant la lista blanca de servicios no incluye
+  `shell_command`, `python_script`, `automation`, `hassio` ni
+  `homeassistant.*`, y los `script.*` se deniegan salvo los declarados en
+  `scripts_permitidos:`. Las órdenes programadas solo puede crearlas o
+  cancelarlas una persona desde su chat: en un turno desatendido (rutina u
+  orden programada) esas herramientas no existen, así que el agente no puede
+  encadenarse trabajo a sí mismo. Hay tests que fijan cada una de estas
+  ausencias.
 - **Ser asistente general no da más permisos en la casa.** La búsqueda web es
   una herramienta del servidor de la API, va detrás de las de la casa y se
   apaga con `busqueda_web: false`; a un niño no se le ofrece. Lo que llega de

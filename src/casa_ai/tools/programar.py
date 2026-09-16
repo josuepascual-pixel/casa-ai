@@ -144,6 +144,16 @@ def _se_puede_avisar(ctx: Contexto) -> bool:
     return ctx.canal in CANALES_CON_AVISO
 
 
+def _lo_pide_una_persona(ctx: Contexto) -> bool:
+    """Solo desde un turno con alguien delante.
+
+    Una orden programada corre con `confirmacion="imposible"`; si desde ahi
+    pudiera programar otra, el agente se encadenaria a si mismo sin que nadie
+    se lo pidiera. Listar si puede: es solo lectura.
+    """
+    return _se_puede_avisar(ctx) and ctx.confirmacion != "imposible"
+
+
 HERRAMIENTAS = [
     Herramienta(
         nombre="programar",
@@ -177,7 +187,7 @@ HERRAMIENTAS = [
         handler=_programar,
         resumen_confirmacion=lambda a: f"Programar: {a.get('orden', '')}",
         para_ninos=True,
-        disponible_si=_se_puede_avisar,
+        disponible_si=_lo_pide_una_persona,
     ),
     Herramienta(
         nombre="programaciones_listar",
@@ -195,6 +205,6 @@ HERRAMIENTAS = [
         riesgo=Riesgo.MEDIO,
         handler=_cancelar,
         para_ninos=True,
-        disponible_si=_se_puede_avisar,
+        disponible_si=_lo_pide_una_persona,
     ),
 ]
