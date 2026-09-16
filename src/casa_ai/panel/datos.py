@@ -205,7 +205,8 @@ async def _casa(ctx: Contexto) -> dict[str, Any]:
             }
             for c in por_dominio.get("climate", [])
         ],
-        # La alarma (ONNA la llama Seguridad): armada, desarmada o saltando.
+        # La alarma, si Home Assistant tiene una (alarm_control_panel): armada,
+        # desarmada o saltando. Sin alarma, la lista va vacia y no se ensena.
         "alarma": [
             {
                 "nombre": _nombre(a),
