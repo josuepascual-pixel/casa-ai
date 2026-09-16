@@ -70,7 +70,7 @@ bluos: []
 # El plano que dibuja el panel, en celdas (una celda ~ 2 m). Es un esquema
 # para empezar: mueve y cambia de tamano cada estancia hasta que se parezca
 # a la casa. `alias` son otras palabras con las que HA nombra esa zona
-# (p. ej. el cuarto de Leo puede llamarse "eros" en el KNX); `entidades`
+# (p. ej. el cuarto del nino lleva su nombre en el KNX); `entidades`
 # fuerza entidades concretas a una estancia.
 plano:
   # Sotano, segun ONNA: sala de juegos, despacho, sala cine, habitacion de
@@ -95,7 +95,7 @@ plano:
   # Planta alta, segun ONNA: suite, bano suite, vestidor, el cuarto del nino
   # y su bano, dormitorios 2 y 3, bano de invitados. En tu copia local anade
   # el nombre real del nino como alias de su cuarto y de su bano (ONNA los
-  # nombra asi), p. ej. `alias: [eros]` / `alias: [bano eros]`.
+  # nombra asi), p. ej. `alias: [<nombre>]` / `alias: [bano <nombre>]`.
   - {zona: suite,                planta: Planta alta, x: 0,  y: 0, ancho: 4, alto: 3, alias: [principal]}
   - {zona: bano suite,           planta: Planta alta, x: 4,  y: 0, ancho: 3, alto: 3}
   - {zona: vestidor,             planta: Planta alta, x: 7,  y: 0, ancho: 2, alto: 3}
@@ -168,7 +168,7 @@ alias_entidades: {}
   # cocina: media_player.homepod_cocina
   # despacho: media_player.homepod_despacho
   # sala de juegos: media_player.homepod_sala_de_juegos
-  # cuarto de leo: media_player.homepod_dormitorio_eros
+  # cuarto de leo: media_player.homepod_dormitorio_leo
   # bano suite: media_player.homepod_bano_suite
   # salon: media_player.salon
   # gym: media_player.gym
