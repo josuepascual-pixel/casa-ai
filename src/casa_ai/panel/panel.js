@@ -588,9 +588,12 @@ function pintarLosetas(datos) {
     aviso.append(icono("alerta"), el("span", null, `Alarma: ${saltando.map((a) => a.nombre).join(", ")}`));
   } else if (abiertos.length) {
     aviso.className = "aviso-casa";
+    const nombres = abiertos.map((a) => a.nombre);
     const texto = abiertos.length === 1
-      ? `${abiertos[0].nombre}: ${abiertos[0].ventana ? "abierta" : "abierto"}`
-      : `Abierto: ${abiertos.map((a) => a.nombre).join(" · ")}`;
+      ? `${nombres[0]}: ${abiertos[0].ventana ? "abierta" : "abierto"}`
+      : abiertos.length <= 3
+        ? `Abierto: ${nombres.join(" · ")}`
+        : `${abiertos.length} abiertos: ${nombres.slice(0, 2).join(" · ")} y ${abiertos.length - 2} más`;
     aviso.append(icono("alerta"), el("span", null, texto));
   } else if (hayDatos(datos.casa) && (datos.casa.accesos || []).length) {
     aviso.className = "aviso-casa tranquilo";
@@ -806,20 +809,41 @@ function detalleEstancia(e, h) {
 function pintarTiraEnergia(energia) {
   const cont = $("tira-energia");
   cont.textContent = "";
-  if (!visible("tira-energia", hayDatos(energia))) return;
+  const hay = hayDatos(energia);
+  visible("tira-energia", hay);
+  visible("anillo-hero", hay);
+  if (!hay) return;
   const r = energia.resumen;
-  const chip = (clase, ic, valor, etiqueta) => {
+
+  // El anillo: la bateria en el centro, con el arco de oro.
+  const soc = r.bateria_soc_pct === null || r.bateria_soc_pct === undefined ? null : Math.max(0, Math.min(100, Number(r.bateria_soc_pct)));
+  const arco = $("arco-bateria");
+  arco.setAttribute("stroke-dashoffset", String(soc === null ? 540 : 540 - (540 * soc) / 100));
+  const socNodo = $("anillo-soc");
+  socNodo.textContent = soc === null ? "—" : String(Math.round(soc));
+  if (soc !== null) socNodo.appendChild(el("small", null, "%"));
+  $("anillo-pie").textContent = r.bateria_w
+    ? `${Number(r.bateria_w) > 0 ? "cargando" : "descargando"} · ${vatios(Math.abs(r.bateria_w))}`
+    : (r.bateria_estado || "en reposo");
+
+  const chip = (clase, ic, valor, unidad, etiqueta) => {
     const b = el("button", clase);
     b.type = "button";
-    b.append(icono(ic), el("span", "valor", valor), el("span", "etiqueta", etiqueta));
+    const v = el("span", "valor", valor);
+    if (unidad) v.appendChild(el("small", null, unidad));
+    b.append(el("span", "etiqueta", etiqueta), v);
     b.addEventListener("click", () => irA("energia"));
     return b;
   };
+  const partes = (w) => {
+    const n = Math.abs(Number(w) || 0);
+    return n >= 1000 ? [(n / 1000).toLocaleString("es-ES", { maximumFractionDigits: 1 }), "kW"] : [String(Math.round(n)), "W"];
+  };
+  const [sol, uSol] = partes(r.solar_w), [casa, uCasa] = partes(r.consumo_casa_w), [red, uRed] = partes(r.red_w);
   cont.append(
-    chip("sol", "sol", vatios(r.solar_w), "sol"),
-    chip("casa", "casa", vatios(r.consumo_casa_w), "casa"),
-    chip("bat", "bateria", r.bateria_soc_pct === null || r.bateria_soc_pct === undefined ? "—" : `${Math.round(r.bateria_soc_pct)} %`, "batería"),
-    chip("red", "red", `${r.red_estado === "exportando" ? "↑" : "↓"} ${vatios(Math.abs(r.red_w))}`, "red"),
+    chip("sol", "sol", sol, uSol, "Sol"),
+    chip("casa", "casa", casa, uCasa, "Casa"),
+    chip("red", "red", red, uRed, r.red_estado === "exportando" ? "Red ↑" : "Red ↓"),
   );
 }
 
@@ -1002,11 +1026,4 @@ $("ver-tabla").addEventListener("click", () => {
   const t = $("tabla-mezcla");
   t.classList.toggle("oculto");
   $("ver-tabla").textContent = t.classList.contains("oculto") ? "Ver como tabla" : "Ocultar tabla";
-});
-$("tema").addEventListener("click", () => {
-  const raiz = document.documentElement;
-  const oscuro = raiz.getAttribute("data-theme") === "dark"
-    || (!raiz.hasAttribute("data-theme")
-        && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  raiz.setAttribute("data-theme", oscuro ? "light" : "dark");
 });
