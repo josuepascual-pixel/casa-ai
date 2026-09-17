@@ -9,7 +9,7 @@ WhatsApp, texto o nota de voz.
 
 ```bash
 pip install -e ".[dev,voz]"                  # `voz` es opcional y pesada
-PYTHONPATH=src python -m pytest tests -q     # 582 tests, no tocan hardware
+PYTHONPATH=src python -m pytest tests -q     # 584 tests, no tocan hardware
 ruff check src tests                         # debe quedar limpio
 casa-ai                                      # backend + bot + rutinas
 
@@ -168,7 +168,7 @@ captura de verdad. Por eso «¿hay alguien en la puerta?» funciona.
 **Una herramienta**: un fichero en `src/casa_ai/tools/`, una `Herramienta` en su
 lista `HERRAMIENTAS`, y `construir_registro()` la recoge. Los tests de
 `test_registry.py` exigen descripción suficiente, esquema válido para
-`strict: true` y, si es de riesgo alto, resumen de confirmación.
+`strict: true` (solo si actúa: la API admite 20 estrictas) y, si es de riesgo alto, resumen de confirmación.
 
 **Un sistema nuevo**: un adaptador en `adapters/` con `configurado` y
 `cerrar()`, añadirlo al `Contexto`, y `requiere="nombre"` en sus herramientas.

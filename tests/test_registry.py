@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from casa_ai.agent.registry import Contexto, Cualquiera, Riesgo, Todos, esquema
+from casa_ai.agent.registry import (
+    LIMITE_STRICT,
+    Contexto,
+    Cualquiera,
+    Herramienta,
+    Registro,
+    Riesgo,
+    Todos,
+    esquema,
+)
 from casa_ai.settings import Inventario, Settings
 from casa_ai.store import Store
 from casa_ai.tools import construir_registro
@@ -39,7 +48,8 @@ def test_todas_las_herramientas_tienen_definicion_valida() -> None:
     for nombre, h in registro.herramientas.items():
         definicion = h.definicion_api()
         assert definicion["name"] == nombre
-        assert definicion["strict"] is True
+        # strict solo en las que actuan: la API admite 20 como mucho.
+        assert definicion.get("strict", False) is (h.riesgo != Riesgo.LECTURA)
         assert len(h.descripcion) > 40, f"{nombre} necesita mejor descripcion"
         assert definicion["input_schema"]["additionalProperties"] is False
         assert set(definicion["input_schema"]["required"]) == set(
@@ -175,3 +185,31 @@ def test_no_hay_nombres_duplicados() -> None:
 def test_construir_registro_dos_veces_no_choca() -> None:
     construir_registro()
     construir_registro()  # no debe lanzar por duplicados
+
+
+
+def test_nunca_hay_mas_de_20_herramientas_estrictas() -> None:
+    """La API rechaza la peticion entera con 21 strict. Paso en produccion con
+    17 herramientas activas mas las internas: cada mensaje daba 400."""
+    registro = construir_registro()
+    estrictas = [h.nombre for h in registro.herramientas.values() if h.estricta]
+    assert len(estrictas) <= LIMITE_STRICT, estrictas
+
+
+def test_la_valvula_relaja_strict_pasado_el_limite(settings: Settings, store: Store) -> None:
+    """Aunque alguien marcara de mas, la peticion sigue siendo valida."""
+    async def nada(_ctx: Contexto) -> dict:
+        return {}
+
+    registro = Registro()
+    registro.anadir(*(
+        Herramienta(
+            nombre=f"accion_{i:02d}", descripcion="Una accion de prueba con descripcion larga",
+            esquema=esquema({}), riesgo=Riesgo.MEDIO, handler=nada,
+        )
+        for i in range(LIMITE_STRICT + 5)
+    ))
+    ctx = contexto(settings, Inventario(), store, por_defecto=True)
+    definiciones = registro.definiciones_api(ctx)
+    assert len(definiciones) == LIMITE_STRICT + 5
+    assert sum(1 for d in definiciones if d.get("strict")) == LIMITE_STRICT

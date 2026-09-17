@@ -1,6 +1,6 @@
 [project]
 name = "casa-ai"
-version = "0.1.0"
+version = "0.1.1"
 description = "Sistema de agentes IA conversacionales para control de energia solar, domotica KNX/ONNA, audio BluOS, camaras y red UniFi"
 requires-python = ">=3.11"
 dependencies = [

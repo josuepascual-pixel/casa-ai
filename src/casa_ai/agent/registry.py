@@ -26,6 +26,12 @@ if TYPE_CHECKING:
 
 Confirmacion = Literal["en_banda", "boton", "imposible"]
 
+# La API admite como mucho 20 herramientas con `strict: true` por peticion; con
+# 21 rechaza el mensaje entero (400). Se reserva strict para las que ACTUAN:
+# una lectura con un argumento mal tipado devuelve un error inofensivo, una
+# accion no. Hay un test que fija que las de accion nunca pasan de 20.
+LIMITE_STRICT = 20
+
 
 class Riesgo(StrEnum):
     """Cuanto dano puede hacer una herramienta si el agente se equivoca."""
@@ -180,16 +186,27 @@ class Herramienta:
     # Ninguna de riesgo alto lo es, y hay un test que lo fija.
     para_ninos: bool = False
 
+    @property
+    def estricta(self) -> bool:
+        """Si se pide validacion estricta de argumentos a la API.
+
+        Solo para las que actuan sobre la casa: son las que no admiten un
+        argumento mal tipado, y son menos de las 20 que la API permite.
+        """
+        return self.riesgo != Riesgo.LECTURA
+
     def definicion_api(self) -> dict[str, Any]:
         """Formato que espera el parametro `tools` de la Messages API."""
-        return {
+        definicion = {
             "name": self.nombre,
             "description": self.descripcion,
             "input_schema": self.esquema,
+        }
+        if self.estricta:
             # strict garantiza que los argumentos validan contra el esquema,
             # asi el handler no tiene que defenderse de tipos raros.
-            "strict": True,
-        }
+            definicion["strict"] = True
+        return definicion
 
     def resumir(self, argumentos: dict[str, Any]) -> str:
         if self.resumen_confirmacion is not None:
@@ -257,7 +274,16 @@ class Registro:
         return h
 
     def definiciones_api(self, ctx: Contexto) -> list[dict[str, Any]]:
-        return [h.definicion_api() for h in self.disponibles(ctx)]
+        definiciones = [h.definicion_api() for h in self.disponibles(ctx)]
+        # Valvula de seguridad: antes que un 400 en cada mensaje, se relaja
+        # strict en las ultimas. El test de LIMITE_STRICT evita llegar aqui.
+        estrictas = 0
+        for d in definiciones:
+            if d.get("strict"):
+                estrictas += 1
+                if estrictas > LIMITE_STRICT:
+                    del d["strict"]
+        return definiciones
 
 
 def _adaptadores(ctx: Contexto) -> dict[str, Any]:

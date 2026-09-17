@@ -207,7 +207,7 @@ src/casa_ai/
 **Una herramienta nueva**: un fichero en `tools/`, una `Herramienta` en su
 lista `HERRAMIENTAS`, y `construir_registro()` la recoge. Los tests de
 `test_registry.py` verifican que tenga descripción suficiente, esquema válido
-para `strict: true` y, si es de riesgo alto, resumen de confirmación.
+para `strict: true` (solo si actúa: la API admite 20 estrictas) y, si es de riesgo alto, resumen de confirmación.
 
 **Un sistema nuevo** (por ejemplo un aspirador o un riego propio): un adaptador
 en `adapters/` con una propiedad `configurado` y un método `cerrar()`,
