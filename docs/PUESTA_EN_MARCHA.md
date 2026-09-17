@@ -15,9 +15,15 @@ Van al formulario del complemento, que las guarda en tu Home Assistant.
 
 1. **Mini PC** (el ACEMAGICIAN K1 aprobado) enchufado por cable al switch
    más cercano al cuadro. Sin WiFi: el bus KNX y el Modbus quieren cable.
-2. **Home Assistant OS**: descarga la imagen «Generic x86-64» desde
-   home-assistant.io, grábala en un USB con Balena Etcher, arranca el mini PC
-   desde el USB e instala en el disco. Diez minutos.
+2. **Home Assistant OS**: en un x86 no se «instala desde el USB»: la imagen
+   se escribe directamente en el disco interno. El camino oficial es un
+   Ubuntu en vivo: graba la ISO de Ubuntu en el USB con Balena Etcher,
+   arranca el mini PC desde el USB («Probar Ubuntu»), y desde ahí descarga
+   la imagen «Generic x86-64» de home-assistant.io y Etcher para Linux, y
+   escribe la imagen en el disco NVMe (no en el USB). Antes, en la BIOS:
+   Secure Boot desactivado, modo UEFI y «Power On» tras corte de luz. Apaga,
+   quita el USB, enciende. Veinte minutos. Está paso a paso en el PDF de
+   puesta en marcha.
 3. En un navegador de casa: `http://homeassistant.local:8123`. Crea tu
    usuario. Ese es el dueño de Home Assistant.
 4. **Complemento Casa AI**: Ajustes → Complementos → Tienda → menú de tres
