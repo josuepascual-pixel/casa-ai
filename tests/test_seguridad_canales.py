@@ -276,9 +276,21 @@ def test_avisos_de_seguridad(settings: Settings) -> None:
     avisos = " ".join(inseguro.avisos_de_seguridad())
 
     assert "UNIFI_VERIFICAR_TLS" in avisos
-    assert "http sin cifrar" in avisos
+    assert "http sin cifrar" in avisos and "mDNS" in avisos
     assert "API_TOKEN" in avisos
     assert "EXIGIR_CONFIRMACION" in avisos
+
+
+def test_el_proxy_del_supervisor_no_es_http_por_la_red(settings: Settings) -> None:
+    """Dentro del complemento HA_URL es http://supervisor/core: red interna de
+    Docker, no la de la casa. Avisar ahi salia en el primer arranque de cada
+    casa y era falso."""
+    complemento = settings.model_copy(update={"ha_url": "http://supervisor/core"})
+    assert not any("http sin cifrar" in a for a in complemento.avisos_de_seguridad())
+    # Una IP de la LAN por http si avisa, pero sin hablar de mDNS.
+    lan = settings.model_copy(update={"ha_url": "http://192.168.0.17:8123"})
+    avisos = " ".join(lan.avisos_de_seguridad())
+    assert "http sin cifrar" in avisos and "mDNS" not in avisos
 
 
 def test_configuracion_correcta_no_avisa(settings: Settings) -> None:

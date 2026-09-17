@@ -1,5 +1,13 @@
 # Cambios
 
+## 0.1.2
+
+- Arreglo: en el primer arranque, Jarvis avisaba de que `HA_URL` iba por http
+  sin cifrar. Dentro del complemento esa direccion (`http://supervisor/core`)
+  es la red interna de Docker, no la de la casa: era un falso positivo. El
+  aviso sigue para una direccion http de verdad, y solo menciona mDNS si el
+  nombre es `.local`.
+
 ## 0.1.1
 
 - Arreglo: todos los mensajes fallaban con «Too many strict tools (21)». La API

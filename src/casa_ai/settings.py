@@ -588,15 +588,23 @@ class Settings(BaseSettings):
                 "puede verificar. Exporta el certificado de la consola y "
                 "apuntalo con UNIFI_CA_BUNDLE."
             )
+        # `http://supervisor/core` es el proxy del Supervisor dentro del
+        # complemento: red interna de Docker, nunca la de la casa. Avisar ahi
+        # era un falso positivo que salia en el primer arranque de cada casa.
         if self.ha_url.startswith("http://") and not self.ha_url.startswith(
-            ("http://localhost", "http://127.0.0.1")
+            ("http://localhost", "http://127.0.0.1", "http://supervisor/")
         ):
-            avisos.append(
+            aviso = (
                 f"HA_URL usa http sin cifrar ({self.ha_url}): el token de "
                 "Home Assistant, que da control total de la casa, viaja en "
-                "claro por la red. Y un nombre .local se resuelve por mDNS, "
-                "que cualquier equipo de la red puede suplantar."
+                "claro por la red."
             )
+            if ".local" in self.ha_url:
+                aviso += (
+                    " Y un nombre .local se resuelve por mDNS, que cualquier "
+                    "equipo de la red puede suplantar."
+                )
+            avisos.append(aviso)
         if self.api_expuesta_sin_token:
             avisos.append(
                 f"El API escucha en {self.api_host} sin API_TOKEN: cualquiera "

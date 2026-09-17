@@ -6,7 +6,7 @@
 # Lo que el complemento resuelve por su cuenta (Home Assistant, rutas de
 # datos, red) no aparece aqui a proposito.
 name: Casa AI
-version: "0.1.1"
+version: "0.1.2"
 slug: casa_ai
 description: Agente conversacional que controla la casa por Telegram o WhatsApp
 url: https://github.com/josuepascual-pixel/casa-ai
