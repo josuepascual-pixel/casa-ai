@@ -1,5 +1,12 @@
 # Cambios
 
+## 0.1.3
+
+- Musica en los HomePod y Apple TV: se permite `media_player.play_media`, asi
+  que Jarvis puede mandar una radio por internet o un archivo a un altavoz de
+  Apple, no solo hablar por el. `select_source` para los equipos con entradas.
+- Jarvis ya no escribe asteriscos de markdown en Telegram.
+
 ## 0.1.2
 
 - Arreglo: en el primer arranque, Jarvis avisaba de que `HA_URL` iba por http

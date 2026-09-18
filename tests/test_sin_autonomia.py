@@ -71,3 +71,10 @@ def test_el_prompt_le_dice_lo_que_no_puede(settings: Settings) -> None:
     assert "No ejecutas codigo" in prompt
     assert "No creas automatizaciones" in prompt
     assert "No actuas por iniciativa propia" in prompt
+
+
+def test_un_homepod_puede_recibir_musica_pero_no_ordenes_libres() -> None:
+    """play_media manda un flujo de audio; `send_command` de remote sigue fuera
+    porque es un canal libre hacia el equipo."""
+    assert {"play_media", "select_source"} <= SERVICIOS_PERMITIDOS["media_player"]
+    assert "send_command" not in SERVICIOS_PERMITIDOS["remote"]

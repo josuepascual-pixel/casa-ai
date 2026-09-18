@@ -46,6 +46,10 @@ SERVICIOS_PERMITIDOS: dict[str, set[str]] = {
     "media_player": {
         "turn_on", "turn_off", "volume_set", "media_play", "media_pause",
         "media_stop", "media_next_track", "media_previous_track",
+        # Un HomePod o un Apple TV no tienen fuente propia: solo suenan si se
+        # les manda un flujo (una radio por internet, una URL). Sin esto, los
+        # altavoces de Apple solo servian para hablar, no para musica.
+        "play_media", "select_source",
     },
     "fan": {"turn_on", "turn_off", "set_percentage"},
     # Hablar por un altavoz. Solo `speak`: `clear_cache` y compania no pintan nada.
